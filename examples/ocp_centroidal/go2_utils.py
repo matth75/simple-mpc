@@ -37,17 +37,6 @@ def plot_results(res:np.array, show_plot:bool=True, savefig:str=""):
     axs[2].set_ylabel("angular momentum")
     axs[2].set_xlabel("time (steps of simulation)")
 
-    # # add vertical lines
-    # axs[0].axvline(x=30, color='gray', linestyle='--', label='x = 30')
-    # axs[1].axvline(x=30, color='gray', linestyle='--')
-    # axs[2].axvline(x=30, color='gray', linestyle='--')
-    # axs[0].axvline(x=20, color='gray', linestyle='--', label='x = 30')
-    # axs[1].axvline(x=20, color='gray', linestyle='--')
-    # axs[2].axvline(x=20, color='gray', linestyle='--')
-    # axs[0].axvline(x=70, color='gray', linestyle='--', label='x = 30')
-    # axs[1].axvline(x=70, color='gray', linestyle='--')
-    # axs[2].axvline(x=70, color='gray', linestyle='--')
-
     plt.tight_layout()
 
     if len(savefig) > 0:
@@ -55,6 +44,60 @@ def plot_results(res:np.array, show_plot:bool=True, savefig:str=""):
     if show_plot:
         plt.show()
 
+
+def compare_predictions(res_centroidal:np.array, res_fd:np.array, show_plot:bool=True, save_png:str=""):
+    """Creates a plot comparing the centroidal trajectory from centroidal model and full dynamics model. 
+    Same function than plot_results but with 2 lines in the same plot."""
+    com_centroidal = res_centroidal[:,:3]
+    com_fd = res_fd[:,:3]
+    time = np.arange(len(com_centroidal))
+
+    fig, axs = plt.subplots(3, 1, figsize=(10, 15), sharex=True)
+
+    # plot com positions x, y, z as a function of time, in subplots
+    axs[0].plot(time, com_centroidal[:, 0], label='Centroidal x', color='blue')
+    axs[0].plot(time, com_fd[:, 0], label='FD x', color='cyan')
+    axs[0].plot(time, com_centroidal[:, 1], label='Centroidal y', color='red')
+    axs[0].plot(time, com_fd[:, 1], label='FD y', color='orange')
+    axs[0].plot(time, com_centroidal[:, 2], label='Centroidal z', color='green')
+    axs[0].plot(time, com_fd[:, 2], label='FD z', color='lime')
+    axs[0].legend()
+    axs[0].grid(True)
+
+    # linear momentum
+    lin_m_centroidal = res_centroidal[:,3:6]
+    lin_m_fd = res_fd[:,3:6]
+    axs[1].plot(time, lin_m_centroidal[:,0], label="Centroidal x", color="blue")
+    axs[1].plot(time, lin_m_fd[:,0], label="FD x", color="cyan")
+    axs[1].plot(time, lin_m_centroidal[:,1], label="Centroidal y", color="red")
+    axs[1].plot(time, lin_m_fd[:,1], label="FD y", color="orange")
+    axs[1].plot(time, lin_m_centroidal[:,2], label="Centroidal z", color="green")
+    axs[1].plot(time, lin_m_fd[:,2], label="FD z", color="lime")
+    axs[1].legend()
+    axs[1].grid(True)
+
+    # angular momentum
+    ang_m_centroidal = res_centroidal[:,6:]
+    ang_m_fd = res_fd[:,6:]
+    axs[2].plot(time, ang_m_centroidal[:,0], label="Centroidal x", color="blue")
+    axs[2].plot(time, ang_m_fd[:,0], label="FD x", color="cyan")
+    axs[2].plot(time, ang_m_centroidal[:,1], label="Centroidal y", color="red")
+    axs[2].plot(time, ang_m_fd[:,1], label="FD y", color="orange")
+    axs[2].plot(time, ang_m_centroidal[:,2], label="Centroidal z", color="green")
+    axs[2].plot(time, ang_m_fd[:,2], label="FD z", color="lime")
+    axs[2].legend()
+    axs[2].grid(True)   
+    axs[0].set_title("Comparison of Centroidal and Full Dynamics Trajectory")
+    axs[0].set_ylabel("COM")
+    axs[1].set_ylabel("Linear Momentum")
+    axs[2].set_ylabel("Angular Momentum")
+    axs[2].set_xlabel("Time (steps of simulation)")
+    plt.tight_layout()
+
+    if len(save_png) > 0:
+        plt.savefig(f"results/{save_png}.png")
+    if show_plot:
+        plt.show()
 
 def plot_com_3d(com:np.array, show_plot:bool=True, save_png:str=""):
     """ Creates a 3D plot of COM trajectory. """

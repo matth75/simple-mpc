@@ -15,7 +15,7 @@ import time
 from utils import extract_forces
 import copy
 
-from ocp_centroidal.go2_utils import create_contact_phases, plot_results
+from ocp_centroidal.go2_utils import create_contact_phases, plot_results, compare_predictions
 from ocp_centroidal.go2centrOPC import Go2CentroidalOCP
 
 import matplotlib.pyplot as plt
@@ -234,7 +234,7 @@ mpc.velocity_base = v
 go2centr = Go2CentroidalOCP(model_handler)
 
 # number of simulation steps
-n_steps = 100
+n_steps = 150
 
 for t in range(n_steps):
     print("Time " + str(t))
@@ -255,18 +255,6 @@ for t in range(n_steps):
     #         print("s = " + str(s))
     #     exit()  
 
-    if t == 75: # beginning of the jump
-        contact_states = mpc.ocp_handler.getContactState(0)
-        print(list(contact_states))
-        x = x_multibody[-1]
-        data_handler.updateInternalData(x, False)
-        x_centr = data_handler.getCentroidalState()
-
-        res = go2centr.runOCP(x_centr, contact_phasesOCP[25:])
-
-        plot_results(np.array(res.xs))
-
-
     device.moveQuadrupedFeet(
         mpc.getReferencePose(0, "FL_foot").translation,
         mpc.getReferencePose(0, "FR_foot").translation,
@@ -285,6 +273,8 @@ for t in range(n_steps):
     forces_vec0 = mpc.getContactForces(0)
     forces_vec1 = mpc.getContactForces(1)
     contact_states = mpc.ocp_handler.getContactState(0)
+
+    # print(f'{t} : {list(contact_states)}')
 
     force_FL.append(forces_vec0[:3])
     force_FR.append(forces_vec0[3:6])
@@ -306,6 +296,33 @@ for t in range(n_steps):
     RR_references.append(mpc.getReferencePose(0, "RR_foot").translation)
     com_measured.append(mpc.getDataHandler().getData().com[0].copy())
     L_measured.append(mpc.getDataHandler().getData().hg.angular.copy())
+
+
+    comp_time = 90
+    if t == comp_time: # beginning of the jump : first [False, False, False ,False]
+        contact_states = mpc.ocp_handler.getContactState(0)
+        print(list(contact_states))
+        x = mpc.xs[0]
+
+        data_handler.updateInternalData(x, False)
+        x_centr = data_handler.getCentroidalState()
+
+
+        res = go2centr.runOCP(x_centr, contact_phasesOCP[comp_time - 49:(comp_time)])
+
+        traj_mpc = []
+        for s in range(T):  # len(mpc.xs) = 51, T = 50
+            x = mpc.xs[s]
+            data_handler.updateInternalData(x, False)
+            traj_mpc.append(data_handler.getCentroidalState())
+
+        traj_mpc = np.array(traj_mpc)
+ 
+
+        compare_predictions(np.array(res.xs), traj_mpc)
+        # plot_results(traj_mpc)
+        # plot_results(np.array(res.xs))
+
 
 
     for j in range(N_simu):

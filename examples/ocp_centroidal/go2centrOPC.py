@@ -14,7 +14,7 @@ class Go2CentroidalOCP:
         self.rdata = self.rmodel.createData()
         self.nq = self.rmodel.nq
         self.nv = self.rmodel.nv
-        self.qref = model_handler.getReferenceState()[:self.nq]
+        self.qref = self.rmodel.referenceConfigurations["standing"]
         self.nu = 12    # 4 3D contact forces
         self.nx = 9
 
@@ -31,7 +31,12 @@ class Go2CentroidalOCP:
         self.dt = 0.01
 
         self.space = manifolds.VectorSpace(self.nx)
+        # dont forget to update frame placements, else com0 reference will be 0,0,0 !!!!
+        pin.forwardKinematics(self.rmodel, self.rdata, self.qref)
+        pin.updateFramePlacements(self.rmodel, self.rdata)
         self.com0 = pin.centerOfMass(self.rmodel, self.rdata, self.qref)
+        self.x0 = self.space.neutral()
+        self.x0[:3] = self.com0.copy()
 
         # weights associated to the runnings costs
         w_control = np.array([   # 3D forces *4 legs = 12 = nu
@@ -40,11 +45,11 @@ class Go2CentroidalOCP:
             1,1,1,
             1,1,1
         ])
-        self.w_control = np.diag(w_control) * 0.01
-        self.w_com = np.diag([0,0,0])    # no constraint on com right now
+        self.w_control = np.diag(w_control) *0.001
+        self.w_com = np.diag([1,1,100])    # no constraint on com right now
 
         # force robot to be "stable"
-        self.w_lin = np.diag(np.array([0.01, 0.01, 1]))  
+        self.w_lin = np.diag(np.array([0.01, 1, 1]))  
         self.w_ang = np.diag(np.array([0.01, 0.01, 1]))
         self.w_linear_acc = 0.01 * np.eye(3)
         self.w_angular_acc = np.diag(np.array([0.01, 1, 0.01]))
@@ -65,7 +70,7 @@ class Go2CentroidalOCP:
         contact_map = aligator.ContactMap(self.feet_names, contact, contact_pose)
 
         # residuals of COM, linear & angular momentum / accelerations
-        centroidal_com = aligator.CentroidalCoMResidual(self.nx, self.nu, self.com0)
+        # centroidal_com = aligator.CentroidalCoMResidual(self.nx, self.nu, self.com0)
         linear_mom = aligator.LinearMomentumResidual(self.nx, self.nu, np.zeros(3))
         angular_mom = aligator.AngularMomentumResidual(self.nx, self.nu, np.zeros(3))
         linear_acc = aligator.CentroidalAccelerationResidual(self.nx, self.nu, self.mass, self.gravity, contact_map, self.force_size)
@@ -76,7 +81,7 @@ class Go2CentroidalOCP:
 
         # add all costs to the running cost
         rcost.addCost("state_cost", aligator.QuadraticControlCost(self.space, ur, self.w_control))
-        rcost.addCost("com_cost", aligator.QuadraticResidualCost(self.space, centroidal_com, self.w_com))
+        # rcost.addCost("com_cost", aligator.QuadraticResidualCost(self.space, centroidal_com, self.w_com))
         rcost.addCost("linear_mom_cost", aligator.QuadraticResidualCost(self.space, linear_mom, self.w_lin))
         rcost.addCost("angular_mom_cost", aligator.QuadraticResidualCost(self.space, angular_mom, self.w_ang))
         rcost.addCost("angular_acc_cost", aligator.QuadraticResidualCost(self.space, angular_acc, self.w_angular_acc))
@@ -105,13 +110,27 @@ class Go2CentroidalOCP:
 
         """ Add some terminal constraints to guarantee the stability of the robot at the end of the horizon"""
 
+        # position en z du com = z du com de référence
+        com_pos = aligator.StateErrorResidual(self.space, self.nu, self.com0)[2]
+        term_stage_cstr = aligator.StageConstraint(com_pos, constraints.EqualityConstraintSet())
+        self.problem.addTerminalConstraint(term_stage_cstr)
+
+
         # vitesse et moment angulaire = 0 au bout de l'horizon
         linear_mom = aligator.LinearMomentumResidual(self.nx, self.nu, np.zeros(3))
         term_stage_cstr = aligator.StageConstraint(linear_mom, constraints.EqualityConstraintSet())
-        self.problem.addTerminalConstraint(term_stage_cstr)
+        # self.problem.addTerminalConstraint(term_stage_cstr)
 
         angular_mom = aligator.AngularMomentumResidual(self.nx, self.nu, np.zeros(3))
         term_stage_cstr = aligator.StageConstraint(angular_mom, constraints.EqualityConstraintSet())
+        self.problem.addTerminalConstraint(term_stage_cstr)
+
+        # angular momentum acceleration = 0
+        contact_pose = [foot.translation for foot in feet_pose]
+        contact_map = aligator.ContactMap(self.feet_names, contact_phases[-1], contact_pose)
+
+        angular_acc = aligator.AngularAccelerationResidual(self.nx, self.nu, self.mass, self.gravity, contact_map, self.force_size)
+        term_stage_cstr = aligator.StageConstraint(angular_acc, constraints.EqualityConstraintSet())
         self.problem.addTerminalConstraint(term_stage_cstr)
 
         # angular momentum acceleration = 0
@@ -168,7 +187,7 @@ class Go2CentroidalOCP:
 
 def testing():
     import example_robot_data as erd
-    from go2_utils import create_contact_phases
+    from go2_utils import create_contact_phases, plot_results
 
     robot_wrapper = erd.load("go2")
     model_handler = RobotModelHandler(robot_wrapper.model, "standing", "root_joint")
@@ -222,13 +241,29 @@ def testing():
     T_ds, T_ss = 50, 30
 
     timings = [int(T_ds/2), T_ss, int(T_ds/2)]
-    cycles = 2  # number of repetitions of the sequence
+    cycles = 5  # number of repetitions of the sequence
 
     # get the contacts
     contact_phases = [possible_contacts[c] for c in create_contact_phases(c_phases, timings, cycles)]
     contact_phasesOCP = [list(possible_contacts[c].values()) for c in create_contact_phases(c_phases, timings, cycles)]
 
-    print(contact_phasesOCP[30:])
+    space = manifolds.VectorSpace(g.nx)
+    space_multibody = manifolds.MultibodyPhaseSpace(g.rmodel)     # used for init of com
+
+    x0 = space.neutral()
+    print(x0)
+    u0 = np.zeros(g.nu)   # warm start
+
+    # update com position
+    pin.forwardKinematics(g.rmodel, g.rdata, g.qref)
+    pin.updateFramePlacements(g.rmodel, g.rdata)
+    com0 = pin.centerOfMass(g.rmodel, g.rdata, g.qref)
+    x0[:3] = com0.copy()
+    print(x0)
+
+    res = g.runOCP(g.x0, contact_phasesOCP)
+
+    plot_results(np.array(res.xs))
 
 
 if __name__ == "__main__":

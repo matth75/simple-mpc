@@ -15,6 +15,9 @@ import time
 from utils import extract_forces
 import copy
 
+from ocp_centroidal.go2_utils import create_contact_phases, plot_results
+from ocp_centroidal.go2centrOPC import Go2CentroidalOCP
+
 import matplotlib.pyplot as plt
 
 # ####### CONFIGURATION  ############
@@ -84,8 +87,8 @@ T = 50
 dynproblem = FullDynamicsOCP(problem_conf, model_handler)
 dynproblem.createProblem(model_handler.getReferenceState(), T, force_size, gravity[2], False)
 
-T_ds = 30
-T_lift = 10
+T_ds = 50
+T_lift = 20
 T_land = 2
 T_ss = 30
 N_simu = int(0.01 / 0.001)
@@ -135,16 +138,20 @@ contact_phase_lift_Front = {
     "RL_foot": True,
     "RR_foot": True,
 }
-# contact_phases = [contact_phase_quadru] * T_ds
-# contact_phases += [contact_phase_lift_FL] * T_ss
-# contact_phases += [contact_phase_quadru] * T_ds
-# contact_phases += [contact_phase_lift_FR] * T_ss
 
-contact_phases = [contact_phase_quadru] * int(T_ds / 2)
-contact_phases += [contact_phase_lift_Front] * T_lift
-contact_phases += [contact_phase_lift] * T_ss
-contact_phases += [contact_phase_lift_Front] * T_land
-contact_phases += [contact_phase_quadru] * int(T_ds / 2)
+possible_contacts = {"stand":contact_phase_quadru,
+                     "FL_up":contact_phase_lift_Front,    # Front legs up
+                     "air":contact_phase_lift # jumping
+                    }
+
+c_phases = ["stand", "air", "stand"]
+
+timings = [int(T_ds/2), T_ss, int(T_ds/2)]
+cycles = 2  # number of repetitions of the sequence
+
+# get the contacts
+contact_phases = [possible_contacts[c] for c in create_contact_phases(c_phases, timings, cycles)]
+contact_phasesOCP = [list(possible_contacts[c].values()) for c in create_contact_phases(c_phases, timings, cycles)]
 
 mpc.generateCycleHorizon(contact_phases)
 
@@ -223,8 +230,11 @@ v = np.zeros(6)
 v[0] = 0
 mpc.velocity_base = v
 
+""" Test OCP """
+go2centr = Go2CentroidalOCP(model_handler)
+
 # number of simulation steps
-n_steps = 200
+n_steps = 100
 
 for t in range(n_steps):
     print("Time " + str(t))
@@ -237,13 +247,25 @@ for t in range(n_steps):
         str(land_RF) + ", takeoff_LF = " + str(takeoff_LF) + ", landing_LF = ",
         str(land_LF),
     ) """
-    """ if t == 200:
-        for s in range(T):
-            device.resetState(mpc.xs[s][:nq])
-            #device.resetState(state_ref[s])
-            time.sleep(0.02)
-            print("s = " + str(s))
-        exit()  """
+    # if t == 70:
+    #     for s in range(T):
+    #         device.resetState(mpc.xs[s][:nq])
+    #         #device.resetState(state_ref[s])
+    #         time.sleep(0.05)
+    #         print("s = " + str(s))
+    #     exit()  
+
+    if t == 75: # beginning of the jump
+        contact_states = mpc.ocp_handler.getContactState(0)
+        print(list(contact_states))
+        x = x_multibody[-1]
+        data_handler.updateInternalData(x, False)
+        x_centr = data_handler.getCentroidalState()
+
+        res = go2centr.runOCP(x_centr, contact_phasesOCP[25:])
+
+        plot_results(np.array(res.xs))
+
 
     device.moveQuadrupedFeet(
         mpc.getReferencePose(0, "FL_foot").translation,
@@ -346,25 +368,13 @@ L_measured = np.array(L_measured)
 
 torques = np.array(torques)
 
-def plot_forces_with_bounds( force_limit=100):
-    time = np.arange(force_FL.shape[0])
-    fig, axs = plt.subplots(4, 1, figsize=(12, 10), sharex=True)
-    feet = ['FL', 'FR', 'RL', 'RR']
-    forces = [force_FL, force_FR, force_RL, force_RR]
-    for i, (ax, f, name) in enumerate(zip(axs, forces, feet)):
-        ax.plot(time, f[:, 0], label=f'{name} Fx')
-        ax.plot(time, f[:, 1], label=f'{name} Fy')
-        ax.plot(time, f[:, 2], label=f'{name} Fz')
-        ax.axhline(force_limit, color='r', linestyle='--', label='Force limit')
-        ax.axhline(-force_limit, color='r', linestyle='--')
-        ax.set_ylabel(f'{name} Force [N]')
-        ax.legend()
-        ax.grid(True)
-    axs[-1].set_xlabel('Time step')
-    plt.tight_layout()
-    plt.show()
+# centroidal residual
 
-# plot_forces_with_bounds()
+with open("examples/forces.npy", "wb") as f:
+    np.save(f, force_FL)
+    np.save(f, force_FR)
+    np.save(f, force_RL)
+    np.save(f, force_RR)
 
 n_joints = 12
 n_legs = 4
@@ -381,25 +391,25 @@ tau1 = np.array([t[0] for t in torques])
 tau2 = np.array([t[0] for t in torques_before_qp])
 
 
-plt.plot(time,tau2-tau1, label="abs(diff)")
-plt.grid(True)
-plt.legend()
-plt.title("différence des torques avant et après QP")
-plt.savefig("examples/diff_tau.png")
-plt.show()
+# plt.plot(time,tau2-tau1, label="abs(diff)")
+# plt.grid(True)
+# plt.legend()
+# plt.title("différence des torques avant et après QP")
+# plt.savefig("examples/diff_tau.png")
+# plt.show()
 
-fig, axs = plt.subplots(2,1,figsize=(12,10), sharex=True)
-axs[0].plot(time, tau2, label="tau before QP")
-axs[1].plot(time, tau1, label="tau after QP")
-limite = torques_limits[0]
-axs[0].axhline(limite, linestyle="--")
-axs[0].axhline(-limite, linestyle="--")
-axs[1].axhline(limite, linestyle="--")
-axs[1].axhline(-limite, linestyle="--")
-axs[-1].set_xlabel('Time step')
-plt.tight_layout()
-plt.savefig("examples/tau1_tau2.png")
-plt.show()
+# fig, axs = plt.subplots(2,1,figsize=(12,10), sharex=True)
+# axs[0].plot(time, tau2, label="tau before QP")
+# axs[1].plot(time, tau1, label="tau after QP")
+# limite = torques_limits[0]
+# axs[0].axhline(limite, linestyle="--")
+# axs[0].axhline(-limite, linestyle="--")
+# axs[1].axhline(limite, linestyle="--")
+# axs[1].axhline(-limite, linestyle="--")
+# axs[-1].set_xlabel('Time step')
+# plt.tight_layout()
+# plt.savefig("examples/tau1_tau2.png")
+# plt.show()
 
 # plot_torques_with_bounds()
 

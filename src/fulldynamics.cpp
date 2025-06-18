@@ -94,12 +94,12 @@ namespace simple_mpc
     rcost.addCost("centroidal_cost", QuadraticResidualCost(space, cent_mom, settings_.w_cent));
 
     // add a cost for the center of mass
-    Eigen::VectorXd com_ref(3);
-    com_ref(0) = -0.25;
-    com_ref(1) = 0;
-    com_ref(2) = 0.5;
-    auto com = CenterOfMassTranslationResidual(space.ndx(), nu_, model_handler_.getModel(), com_ref);
-    rcost.addCost("com_cost", QuadraticResidualCost(space, com, settings_.w_com));
+    // Eigen::VectorXd com_ref(3);
+    // com_ref(0) = -0.25;
+    // com_ref(1) = 0;
+    // com_ref(2) = 0.5;
+    // auto com = CenterOfMassTranslationResidual(space.ndx(), nu_, model_handler_.getModel(), com_ref);
+    // rcost.addCost("com_cost", QuadraticResidualCost(space, com, settings_.w_com));
     
     pinocchio::context::RigidConstraintModelVector cms;
 

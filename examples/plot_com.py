@@ -8,6 +8,12 @@ with open("examples/com.npy", 'rb') as f:
     RR = np.load(f)
     RL = np.load(f)
 
+with open("examples/forces.npy", 'rb') as f:
+    force_FL = np.load(f)
+    force_FR = np.load(f)
+    force_RL = np.load(f)
+    force_RR = np.load(f)
+
 # plot com position in xy plane
 def plot_com_xy():
     fig, ax = plt.subplots(figsize=(10, 10))
@@ -69,4 +75,82 @@ def plot_com_3d():
     plt.savefig("examples/results/com_position_3d.png")
     plt.show()
 
-plot_com_3d()
+def plot_forces_with_bounds( force_limit=100):
+    time = np.arange(force_FL.shape[0])
+    fig, axs = plt.subplots(4, 1, figsize=(12, 10), sharex=True)
+    feet = ['FL', 'FR', 'RL', 'RR']
+    forces = [force_FL, force_FR, force_RL, force_RR]
+    for i, (ax, f, name) in enumerate(zip(axs, forces, feet)):
+        ax.plot(time, f[:, 0], label=f'{name} Fx')
+        ax.plot(time, f[:, 1], label=f'{name} Fy')
+        ax.plot(time, f[:, 2], label=f'{name} Fz')
+        # ax.axhline(force_limit, color='r', linestyle='--', label='Force limit')
+        # ax.axhline(-force_limit, color='r', linestyle='--')
+        ax.set_ylabel(f'{name} Force [N]')
+        ax.legend()
+        ax.grid(True)
+    axs[-1].set_xlabel('Time step')
+    plt.tight_layout()
+    plt.show()
+
+with open('examples/qptorques.npy', 'rb') as f:
+    torques = np.load(f)
+    torques_limits = np.load(f)
+    # torques_beforeQP = np.load(f)
+
+n_joints = 12
+n_legs = 4
+n_steps = 100
+
+T_ds = 30
+T_lift = 10
+T_land = 2
+T_ss = 30
+
+T = (T_ds/2, T_lift, T_ss, T_land, T_ds/2, T_ds/2, T_lift, T_ss, T_land, T_ds/2)
+c0 = np.zeros(len(T) + 1)
+for i in range(len(T)):
+    c0[i] = sum(T[:i])
+
+c0 = 500 + 10*c0
+
+contact_changes = np.zeros(torques.shape[0])
+
+joint_names = ["FL_hip_joint", "FL_thigh_joint", "FL_calf_joint", "FR_hip_joint", "FR_thigh_joint",
+                "FR_calf_joint", "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+                "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint"]
+
+def plot_torques_with_bounds():
+    # TODO: plot torques for each leg in a seperate subfig
+    fig, axs = plt.subplots(n_legs,1, figsize=(12,10), sharex=True)    # 4 legs
+
+    # simulation step of 1 ms
+    time = np.arange(torques.shape[0])
+
+    # joint torques colors
+    colors = ["orange", "red", "blue"]
+
+    for t, ax in enumerate(axs):  # tous les couples
+        for i in c0:
+            ax.axvline(i, color='teal')     # steps of jumps...
+
+        for j, c in enumerate(colors):
+            t1 = [x[3*t + j] for x in torques]
+            ax.plot(time, t1, label=f"{joint_names[3*t + j]}", color=c)
+            ax.axhline(torques_limits[3*t+j], color=c, linestyle='--')
+            ax.axhline(-torques_limits[3*t+j], color=c, linestyle='--')
+
+        ax.set_ylabel("Torque [N.m]")
+
+        ax.legend()
+        ax.grid(True)
+    axs[-1].set_xlabel('Time (ms)')
+    plt.suptitle(r"Joint torques per leg with bounds ($\tau$)", fontsize=16)
+    plt.tight_layout()
+    plt.savefig("examples/results/torques_qp.png")
+    plt.show()
+
+
+# plot_com_3d()
+plot_torques_with_bounds()
+plot_forces_with_bounds()

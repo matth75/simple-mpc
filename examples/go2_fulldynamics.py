@@ -151,8 +151,8 @@ possible_contacts = {"stand":contact_phase_quadru,
 
 c_phases = ["stand", "air", "stand"]
 
-timings = [int(T_ds/2), T_ss, int(T_ds/2)]
-cycles = 2  # number of repetitions of the sequence
+timings = [int(T_ds/2), T_ss, T_ds]
+cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
 contact_phases = [possible_contacts[c] for c in create_contact_phases(c_phases, timings, cycles)]
@@ -316,8 +316,9 @@ for t in range(n_steps):
         x_centr = data_handler.getCentroidalState()
 
 
-        res = go2centr.runOCP(x_centr, contact_phasesOCP[t - 49:(t)])
+        res = go2centr.runOCP(x_centr, contact_phasesOCP[t - 49:])
 
+        # mpc.xs[0] = current state, mpc.xs[>0] = prediction (T = 50 steps of prediction)
         traj_mpc = []
         forces_fd = []
         for s in range(T):  # len(mpc.xs) = 51, T = 50
@@ -333,8 +334,8 @@ for t in range(n_steps):
         com_fd.append(traj_mpc)
 
         compare_predictions(np.array(res.xs), traj_mpc)
-        plot_forces(np.array(res.us), True, "forces_feet_centroidal")
-        plot_forces(np.array(forces_fd), True, "forces_feet_fd")
+        plot_forces(np.array(res.us))
+        plot_forces(np.array(forces_fd))
         # plot_results(traj_mpc)
         # plot_results(np.array(res.xs))
 

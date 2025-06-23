@@ -189,7 +189,6 @@ def createStage(contact, i, feet_pose, ur):
 
     # create a running cost instance
     rcost = aligator.CostStack(space, nu)   
-
     # add all costs to the running cost
     rcost.addCost("control_cost", aligator.QuadraticControlCost(space, ur, w_control))
     # rcost.addCost("com_cost", aligator.QuadraticResidualCost(space, centroidal_com, w_com))
@@ -217,15 +216,12 @@ def createStage(contact, i, feet_pose, ur):
 
 feet_pose = [rdata.oMf[idx].copy() for idx in feet_ids]
 
-t1,t2 = 0, 80
-contact_phases  = contact_phases[t1:t2]
-uref = uref[t1:t2]
 T_mpc = len(contact_phases)    # nombre de résolutions d'ocp  ~ temps de la simu
 
 # create simulation stages (for each contact phase)
 stages = []
 for i in range(T_mpc):
-    stages.append(createStage(contact_phases[i], i, feet_pose, uref))
+    stages.append(createStage(contact_phases[i], i, feet_pose, uref[i]))
 
 # add an empty terminal cost
 term_cost = aligator.CostStack(space, nu)

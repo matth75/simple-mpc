@@ -102,15 +102,15 @@ possible_contacts = {"stand":[True, True, True, True],
                     }
 
 # contact phases and corresponding timings
-T_ss = 30   # for testing purposes
-T_ds = 20
+T_ss = 60   # for testing purposes
+T_ds = 50
 
 # c_phases = ["stand", "FL_up", "air", "RL_up", "stand"]
 c_phases = ["stand", "air", "stand"]
 
 # timings = [30, 10, 30, 2, 30]
-timings = [T_ds, T_ss, T_ds]
-cycles = 2  # number of repetitions of the sequence
+timings = [T_ds, T_ss, 50]
+cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
 contact_phases = [possible_contacts[c] for c in go2.create_contact_phases(c_phases, timings, cycles)]
@@ -150,7 +150,10 @@ w_control = np.array([   # 3D forces *4 legs = 12 = nu
     1,1,1
 ])
 w_control = np.diag(w_control) * 0.01
-w_com = np.diag([0,0,0])    # no constraint on com right now
+w_com = np.diag([0,0,1])    # no constraint on com right now
+
+umin = np.array([0,0,0] * 4)
+umax = np.array([0,0,250]* 4)
 
 # force robot to be "stable"
 w_lin = np.diag(np.array([0.01, 0.01, 1]))  
@@ -165,7 +168,7 @@ def create_dynamics(contact_map):
     return dyn_model
 
 
-def createStage(contact, feet_pose, ur):
+def createStage(contact, i, feet_pose, ur):
     """ Creates each stage of the OCP, i.e. running cost & constraints for each simulation time step"""
     # defines which contacts are active and where
     contact_pose = [foot.translation for foot in feet_pose]
@@ -182,8 +185,8 @@ def createStage(contact, feet_pose, ur):
     rcost = aligator.CostStack(space, nu)   
 
     # add all costs to the running cost
-    rcost.addCost("state_cost", aligator.QuadraticControlCost(space, ur, w_control))
-    rcost.addCost("com_cost", aligator.QuadraticResidualCost(space, centroidal_com, w_com))
+    rcost.addCost("control_cost", aligator.QuadraticControlCost(space, ur, w_control))
+    # rcost.addCost("com_cost", aligator.QuadraticResidualCost(space, centroidal_com, w_com))
     rcost.addCost("linear_mom_cost", aligator.QuadraticResidualCost(space, linear_mom, w_lin))
     rcost.addCost("angular_mom_cost", aligator.QuadraticResidualCost(space, angular_mom, w_ang))
     rcost.addCost("angular_acc_cost", aligator.QuadraticResidualCost(space, angular_acc, w_angular_acc))
@@ -192,7 +195,17 @@ def createStage(contact, feet_pose, ur):
     # create the stage model associated to the running cost and dynamics
     stm = aligator.StageModel(rcost, create_dynamics(contact_map))
 
-    # no specific constraints (contact constraints already included in contact_map)
+    com_cstr = aligator.CentroidalCoMResidual(nx, nu, com0 + np.array([0,0,0.02]))
+    if i == T_ds or i == T_ds + T_ss:
+        stm.addConstraint(com_cstr, constraints.NegativeOrthant())
+
+    forces_cstr = aligator.ControlErrorResidual(space.ndx, nu)
+    # forces_cstr = aligator.LinearFunctionComposition(forces_cstr, np.diag(np.array([0,0,-1] * 4)) )
+    stm.addConstraint(forces_cstr, constraints.BoxConstraint(umin, umax))
+
+    # # no specific constraints (contact constraints already included in contact_map)
+    # if contact == [True, True, True, True] and contact1 == [False, False, False, False]:
+    #     stm.addConstraint(centroidal_com, constraints.NegativeOrthant())
 
     return stm
 
@@ -201,7 +214,7 @@ feet_pose = [rdata.oMf[idx].copy() for idx in feet_ids]
 # create simulation stages (for each contact phase)
 stages = []
 for i in range(T_mpc):
-    stages.append(createStage(contact_phases[i], feet_pose, uref))
+    stages.append(createStage(contact_phases[i], i, feet_pose, uref))
 
 # add an empty terminal cost
 term_cost = aligator.CostStack(space, nu)
@@ -228,6 +241,11 @@ angular_acc = aligator.AngularAccelerationResidual(nx, nu, mass, gravity, contac
 term_stage_cstr = aligator.StageConstraint(angular_acc, constraints.EqualityConstraintSet())
 problem.addTerminalConstraint(term_stage_cstr)
 
+# z = com0|z
+com_pos = aligator.CentroidalCoMResidual(space.ndx, nu, com0)
+com_pos = aligator.LinearFunctionComposition(com_pos, np.diag(np.array([0,0,1]))) # just z component
+term_stage_cstr = aligator.StageConstraint(com_pos, constraints.EqualityConstraintSet())
+problem.addTerminalConstraint(term_stage_cstr)
 """ Parametrize the solver"""
 
 TOL = 1e-5
@@ -261,5 +279,5 @@ print(res)
 
 xs = np.array(res.xs)
 
-go2.plot_results(xs)
-
+go2.plot_results(xs, T_ds, T_ds + T_ss)
+go2.plot_forces(np.array(res.us))

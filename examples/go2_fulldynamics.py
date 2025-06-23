@@ -15,7 +15,7 @@ import time
 from utils import extract_forces
 import copy
 
-from ocp_centroidal.go2_utils import create_contact_phases, plot_results, compare_predictions
+from ocp_centroidal.go2_utils import create_contact_phases, plot_results, compare_predictions, plot_forces
 from ocp_centroidal.go2centrOPC import Go2CentroidalOCP
 
 import matplotlib.pyplot as plt
@@ -146,8 +146,8 @@ possible_contacts = {"stand":contact_phase_quadru,
 
 c_phases = ["stand", "air", "stand"]
 
-timings = [int(T_ds/2), T_ss, int(T_ds/2)]
-cycles = 2  # number of repetitions of the sequence
+timings = [int(T_ds/2), T_ss, T_ds]
+cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
 contact_phases = [possible_contacts[c] for c in create_contact_phases(c_phases, timings, cycles)]
@@ -298,8 +298,8 @@ for t in range(n_steps):
     L_measured.append(mpc.getDataHandler().getData().hg.angular.copy())
 
 
-    comp_time = 90
-    if t == comp_time: # beginning of the jump : first [False, False, False ,False]
+    comp_time = [50, 60, 80, 100, 130]
+    if t in comp_time: # beginning of the jump : first [False, False, False ,False]
         contact_states = mpc.ocp_handler.getContactState(0)
         print(list(contact_states))
         x = mpc.xs[0]
@@ -308,18 +308,23 @@ for t in range(n_steps):
         x_centr = data_handler.getCentroidalState()
 
 
-        res = go2centr.runOCP(x_centr, contact_phasesOCP[comp_time - 49:(comp_time)])
+        res = go2centr.runOCP(x_centr, contact_phasesOCP[t - 49:])
 
+        # mpc.xs[0] = current state, mpc.xs[>0] = prediction (T = 50 steps of prediction)
         traj_mpc = []
+        forces_fd = []
         for s in range(T):  # len(mpc.xs) = 51, T = 50
             x = mpc.xs[s]
             data_handler.updateInternalData(x, False)
             traj_mpc.append(data_handler.getCentroidalState())
+            forces_fd.append(mpc.getContactForces(s))
 
         traj_mpc = np.array(traj_mpc)
  
 
         compare_predictions(np.array(res.xs), traj_mpc)
+        plot_forces(np.array(res.us))
+        plot_forces(np.array(forces_fd))
         # plot_results(traj_mpc)
         # plot_results(np.array(res.xs))
 

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import ndcurves
 
-def plot_results(res:np.array, show_plot:bool=True, savefig:str=""):
+def plot_results(res:np.array, T_jump:int=0, T_land:int=0, show_plot:bool=True, savefig:str=""):
     """ Create plots of com position, linear and angular momentum"""
     com = res[:,:3]
     lin_m = res[:,3:6]
@@ -37,6 +37,32 @@ def plot_results(res:np.array, show_plot:bool=True, savefig:str=""):
     axs[2].set_ylabel("angular momentum")
     axs[2].set_xlabel("time (steps of simulation)")
 
+    if T_jump >0:
+        for i in (0,1,2):
+            axs[i].axvline(T_jump, ls='--', color="teal")
+
+    if T_land >0:
+        for i in (0,1,2):
+            axs[i].axvline(T_land, ls='--', color="teal")
+
+    # add labels for the two minimums and the maximum of the com z position
+    if len(com) > 0:
+        min1_z = np.min(com[:T_jump,2])
+        min2_z = np.min(com[T_land:,2])
+        max_z = np.max(com[:,2])
+        min1_idx = np.argmin(com[:T_jump,2])
+        min2_idx = np.argmin(com[T_land:,2]) + T_land
+        max_idx = np.argmax(com[:,2])
+        axs[0].annotate(f"min1 z: {min1_z:.2f} at {min1_idx}", 
+                        xy=(min1_idx - 10, min1_z - 0.05))
+        axs[0].annotate(f"min2 z: {min2_z:.2f} at {min2_idx}", 
+                        xy=(min2_idx - 10, min2_z - 0.05))
+        axs[0].annotate(f"max z: {max_z:.2f} at {max_idx}", 
+                        xy=(max_idx + 2, max_z ))
+        axs[0].scatter(min1_idx, min1_z, color='black', s=50, marker='x')
+        axs[0].scatter(min2_idx, min2_z, color='black', s=50, marker='x')
+        axs[0].scatter(max_idx, max_z, color='black', s=50, marker='x')
+
     plt.tight_layout()
 
     if len(savefig) > 0:
@@ -51,16 +77,17 @@ def compare_predictions(res_centroidal:np.array, res_fd:np.array, show_plot:bool
     com_centroidal = res_centroidal[:,:3]
     com_fd = res_fd[:,:3]
     time = np.arange(len(com_centroidal))
+    time2 = np.arange(len(com_fd))
 
     fig, axs = plt.subplots(3, 1, figsize=(10, 15), sharex=True)
 
     # plot com positions x, y, z as a function of time, in subplots
     axs[0].plot(time, com_centroidal[:, 0], label='Centroidal x', color='blue')
-    axs[0].plot(time, com_fd[:, 0], label='FD x', color='cyan')
+    axs[0].plot(time2, com_fd[:, 0], label='FD x', color='cyan')
     axs[0].plot(time, com_centroidal[:, 1], label='Centroidal y', color='red')
-    axs[0].plot(time, com_fd[:, 1], label='FD y', color='orange')
+    axs[0].plot(time2, com_fd[:, 1], label='FD y', color='orange')
     axs[0].plot(time, com_centroidal[:, 2], label='Centroidal z', color='green')
-    axs[0].plot(time, com_fd[:, 2], label='FD z', color='lime')
+    axs[0].plot(time2, com_fd[:, 2], label='FD z', color='lime')
     axs[0].legend()
     axs[0].grid(True)
 
@@ -68,11 +95,11 @@ def compare_predictions(res_centroidal:np.array, res_fd:np.array, show_plot:bool
     lin_m_centroidal = res_centroidal[:,3:6]
     lin_m_fd = res_fd[:,3:6]
     axs[1].plot(time, lin_m_centroidal[:,0], label="Centroidal x", color="blue")
-    axs[1].plot(time, lin_m_fd[:,0], label="FD x", color="cyan")
+    axs[1].plot(time2, lin_m_fd[:,0], label="FD x", color="cyan")
     axs[1].plot(time, lin_m_centroidal[:,1], label="Centroidal y", color="red")
-    axs[1].plot(time, lin_m_fd[:,1], label="FD y", color="orange")
+    axs[1].plot(time2, lin_m_fd[:,1], label="FD y", color="orange")
     axs[1].plot(time, lin_m_centroidal[:,2], label="Centroidal z", color="green")
-    axs[1].plot(time, lin_m_fd[:,2], label="FD z", color="lime")
+    axs[1].plot(time2, lin_m_fd[:,2], label="FD z", color="lime")
     axs[1].legend()
     axs[1].grid(True)
 
@@ -80,11 +107,11 @@ def compare_predictions(res_centroidal:np.array, res_fd:np.array, show_plot:bool
     ang_m_centroidal = res_centroidal[:,6:]
     ang_m_fd = res_fd[:,6:]
     axs[2].plot(time, ang_m_centroidal[:,0], label="Centroidal x", color="blue")
-    axs[2].plot(time, ang_m_fd[:,0], label="FD x", color="cyan")
+    axs[2].plot(time2, ang_m_fd[:,0], label="FD x", color="cyan")
     axs[2].plot(time, ang_m_centroidal[:,1], label="Centroidal y", color="red")
-    axs[2].plot(time, ang_m_fd[:,1], label="FD y", color="orange")
+    axs[2].plot(time2, ang_m_fd[:,1], label="FD y", color="orange")
     axs[2].plot(time, ang_m_centroidal[:,2], label="Centroidal z", color="green")
-    axs[2].plot(time, ang_m_fd[:,2], label="FD z", color="lime")
+    axs[2].plot(time2, ang_m_fd[:,2], label="FD z", color="lime")
     axs[2].legend()
     axs[2].grid(True)   
     axs[0].set_title("Comparison of Centroidal and Full Dynamics Trajectory")
@@ -96,6 +123,64 @@ def compare_predictions(res_centroidal:np.array, res_fd:np.array, show_plot:bool
 
     if len(save_png) > 0:
         plt.savefig(f"results/{save_png}.png")
+    if show_plot:
+        plt.show()
+
+# poor function
+def global_comp_predictions(com_c:np.array, com_fd:np.array, comp_times, show_plot:bool=True, save_png:str=""):
+    n = com_c.shape[0]
+    fig, axs = plt.subplots(3,1,figsize=(10,15), sharex=True)
+    colors1 = ['red', 'blue', 'orange']
+    colors2 = ['cyan', 'teal', 'lime']
+    for i in range(n):
+        com_c_i = com_c[i]
+        com_fd_i = com_fd[i]
+        time = np.arange(len(com_c_i)) + comp_times[i]
+        axs[0].plot(time, com_c_i[:,0], label="Centroidal x", color=colors1[i%3], ls='--')
+        axs[0].plot(time, com_fd_i[:,0], label="FD x", color=colors2[i%3])
+        axs[1].plot(time, com_c_i[:,1], label="Centroidal x", color=colors1[i%3], ls='--')
+        axs[1].plot(time, com_fd_i[:,1], label="FD x", color=colors2[i%3])
+        axs[2].plot(time, com_c_i[:,2], label="Centroidal x", color=colors1[i%3], ls='--')
+        axs[2].plot(time, com_fd_i[:,2], label="FD x", color=colors2[i%3])
+
+    ylabels = ["x","y","z"]
+
+    for j,y in enumerate(ylabels):
+        axs[j].legend()
+        axs[j].grid(True)
+        axs[j].set_ylabel(f"COM {y}")
+
+    axs[0].set_title("Comparison of Centroidal and Full Dynamics Trajectory")
+    axs[2].set_xlabel("Time (steps of simulation)")
+
+    plt.tight_layout()
+
+    if len(save_png) > 0:
+        plt.savefig(f"/home/matthieu/simple/simple-mpc_ws/src/simple-mpc/examples/results/{save_png}.png")
+    if show_plot:
+        plt.show()
+    
+
+def plot_forces(f:np.array, show_plot:bool=True, save_png:str=""):
+    fig, axs = plt.subplots(4, 1, figsize=(15,10), sharex=True)
+    time = np.arange(f.shape[0])
+
+    labels = ["FL foot", "FR_foot", "RL foot", "RR foot"]
+
+    for i,l in enumerate(labels):
+        axs[i].plot(time, f[:,i*3], label = 'x')
+        axs[i].plot(time, f[:,i*3 + 1], label = 'y')
+        axs[i].plot(time, f[:,i*3 + 2], label = 'z')
+        axs[i].set_ylabel(l)
+        axs[i].legend()
+        axs[i].grid(True)
+    
+    axs[0].set_title("Forces on each leg")
+    axs[-1].set_xlabel("Time (steps of simulation)")
+    plt.tight_layout()
+    
+    if len(save_png) > 0:
+        plt.savefig(f"/home/matthieu/simple/simple-mpc_ws/src/simple-mpc/examples/results/{save_png}.png")
     if show_plot:
         plt.show()
 

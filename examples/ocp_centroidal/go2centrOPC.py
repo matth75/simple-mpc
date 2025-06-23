@@ -45,7 +45,7 @@ class Go2CentroidalOCP:
             1,1,1,
             1,1,1
         ])
-        self.w_control = np.diag(w_control) *0.001
+        self.w_control = np.diag(w_control) *0.01
         self.w_com = np.diag([1,1,100])    # no constraint on com right now
 
         # force robot to be "stable"
@@ -119,18 +119,10 @@ class Go2CentroidalOCP:
         # vitesse et moment angulaire = 0 au bout de l'horizon
         linear_mom = aligator.LinearMomentumResidual(self.nx, self.nu, np.zeros(3))
         term_stage_cstr = aligator.StageConstraint(linear_mom, constraints.EqualityConstraintSet())
-        # self.problem.addTerminalConstraint(term_stage_cstr)
+        self.problem.addTerminalConstraint(term_stage_cstr)
 
         angular_mom = aligator.AngularMomentumResidual(self.nx, self.nu, np.zeros(3))
         term_stage_cstr = aligator.StageConstraint(angular_mom, constraints.EqualityConstraintSet())
-        self.problem.addTerminalConstraint(term_stage_cstr)
-
-        # angular momentum acceleration = 0
-        contact_pose = [foot.translation for foot in feet_pose]
-        contact_map = aligator.ContactMap(self.feet_names, contact_phases[-1], contact_pose)
-
-        angular_acc = aligator.AngularAccelerationResidual(self.nx, self.nu, self.mass, self.gravity, contact_map, self.force_size)
-        term_stage_cstr = aligator.StageConstraint(angular_acc, constraints.EqualityConstraintSet())
         self.problem.addTerminalConstraint(term_stage_cstr)
 
         # angular momentum acceleration = 0

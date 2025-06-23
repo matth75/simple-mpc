@@ -15,7 +15,12 @@ import time
 from utils import extract_forces
 import copy
 
-from ocp_centroidal.go2_utils import create_contact_phases, plot_results, compare_predictions
+from ocp_centroidal.go2_utils import (create_contact_phases,
+                                        plot_results,
+                                        compare_predictions, 
+                                        global_comp_predictions,
+                                        plot_forces)
+
 from ocp_centroidal.go2centrOPC import Go2CentroidalOCP
 
 import matplotlib.pyplot as plt
@@ -98,7 +103,7 @@ mpc_conf = dict(
     mu_init=1e-8,
     max_iters=1,
     num_threads=8,
-    swing_apex=0.2,
+    swing_apex=0.2, 
     T_fly=T_ss,
     T_contact=T_ds,
     timestep=dt,
@@ -225,6 +230,10 @@ L_measured = []
 torques = []
 torques_before_qp = []
 
+com_c =  []
+com_fd = []
+comp_times = [60, 70, 80, 90, 100]
+
 # vitesse du robot
 v = np.zeros(6)
 v[0] = 0
@@ -298,8 +307,7 @@ for t in range(n_steps):
     L_measured.append(mpc.getDataHandler().getData().hg.angular.copy())
 
 
-    comp_time = 90
-    if t == comp_time: # beginning of the jump : first [False, False, False ,False]
+    if t in comp_times: # beginning of the jump : first [False, False, False ,False]
         contact_states = mpc.ocp_handler.getContactState(0)
         print(list(contact_states))
         x = mpc.xs[0]
@@ -308,18 +316,25 @@ for t in range(n_steps):
         x_centr = data_handler.getCentroidalState()
 
 
-        res = go2centr.runOCP(x_centr, contact_phasesOCP[comp_time - 49:(comp_time)])
+        res = go2centr.runOCP(x_centr, contact_phasesOCP[t - 49:(t)])
 
         traj_mpc = []
+        forces_fd = []
         for s in range(T):  # len(mpc.xs) = 51, T = 50
             x = mpc.xs[s]
+            u = mpc.us[s]
             data_handler.updateInternalData(x, False)
             traj_mpc.append(data_handler.getCentroidalState())
+            forces_fd.append(mpc.getContactForces(s))
 
         traj_mpc = np.array(traj_mpc)
- 
+
+        com_c.append(np.array(res.xs))
+        com_fd.append(traj_mpc)
 
         compare_predictions(np.array(res.xs), traj_mpc)
+        plot_forces(np.array(res.us), True, "forces_feet_centroidal")
+        plot_forces(np.array(forces_fd), True, "forces_feet_fd")
         # plot_results(traj_mpc)
         # plot_results(np.array(res.xs))
 
@@ -366,6 +381,8 @@ for t in range(n_steps):
 
         u_multibody.append(copy.deepcopy(current_torque))
         x_multibody.append(x_measured)
+
+# global_comp_predictions(np.array(com_c), np.array(com_fd), comp_times, True, "mult_comp_predictions")
 
 force_FL = np.array(force_FL)
 force_FR = np.array(force_FR)

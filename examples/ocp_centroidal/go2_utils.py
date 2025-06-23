@@ -44,6 +44,66 @@ def plot_results(res:np.array, show_plot:bool=True, savefig:str=""):
     if show_plot:
         plt.show()
 
+# poor function
+def global_comp_predictions(com_c:np.array, com_fd:np.array, comp_times, show_plot:bool=True, save_png:str=""):
+    n = com_c.shape[0]
+    fig, axs = plt.subplots(3,1,figsize=(10,15), sharex=True)
+    colors1 = ['red', 'blue', 'orange']
+    colors2 = ['cyan', 'teal', 'lime']
+    for i in range(n):
+        com_c_i = com_c[i]
+        com_fd_i = com_fd[i]
+        time = np.arange(len(com_c_i)) + comp_times[i]
+        axs[0].plot(time, com_c_i[:,0], label="Centroidal x", color=colors1[i%3], ls='--')
+        axs[0].plot(time, com_fd_i[:,0], label="FD x", color=colors2[i%3])
+        axs[1].plot(time, com_c_i[:,1], label="Centroidal x", color=colors1[i%3], ls='--')
+        axs[1].plot(time, com_fd_i[:,1], label="FD x", color=colors2[i%3])
+        axs[2].plot(time, com_c_i[:,2], label="Centroidal x", color=colors1[i%3], ls='--')
+        axs[2].plot(time, com_fd_i[:,2], label="FD x", color=colors2[i%3])
+
+    ylabels = ["x","y","z"]
+
+    for j,y in enumerate(ylabels):
+        axs[j].legend()
+        axs[j].grid(True)
+        axs[j].set_ylabel(f"COM {y}")
+
+    axs[0].set_title("Comparison of Centroidal and Full Dynamics Trajectory")
+    axs[2].set_xlabel("Time (steps of simulation)")
+
+    plt.tight_layout()
+
+    if len(save_png) > 0:
+        plt.savefig(f"/home/matthieu/simple/simple-mpc_ws/src/simple-mpc/examples/results/{save_png}.png")
+    if show_plot:
+        plt.show()
+    
+
+def plot_forces(f:np.array, show_plot:bool=True, save_png:str=""):
+    fig, axs = plt.subplots(4, 1, figsize=(15,10), sharex=True)
+    time = np.arange(f.shape[0])
+
+    labels = ["FL foot", "FR_foot", "RL foot", "RR foot"]
+
+    for i,l in enumerate(labels):
+        axs[i].plot(time, f[:,i*3], label = 'x')
+        axs[i].plot(time, f[:,i*3 + 1], label = 'y')
+        axs[i].plot(time, f[:,i*3 + 2], label = 'z')
+        axs[i].set_ylabel(l)
+        axs[i].legend()
+        axs[i].grid(True)
+    
+    axs[0].set_title("Forces on each leg")
+    axs[-1].set_xlabel("Time (steps of simulation)")
+    plt.tight_layout()
+    
+    if len(save_png) > 0:
+        plt.savefig(f"/home/matthieu/simple/simple-mpc_ws/src/simple-mpc/examples/results/{save_png}.png")
+    if show_plot:
+        plt.show()
+
+
+    
 
 def compare_predictions(res_centroidal:np.array, res_fd:np.array, show_plot:bool=True, save_png:str=""):
     """Creates a plot comparing the centroidal trajectory from centroidal model and full dynamics model. 

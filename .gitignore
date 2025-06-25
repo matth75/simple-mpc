@@ -7,6 +7,9 @@
 *.o
 *.obj
 
+# pycache files
+*.pyc
+
 # Precompiled Headers
 *.gch
 *.pch
@@ -34,3 +37,6 @@
 .cache/
 build*/
 /__pycache__/
+examples/ocp_centroidal/__pycache__/go2_utils.cpython-311.pyc
+examples/ocp_centroidal/__pycache__/go2_utils.cpython-311.pyc
+examples/ocp_centroidal/__pycache__/go2centrOPC.cpython-311.pyc

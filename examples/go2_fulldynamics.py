@@ -151,7 +151,7 @@ possible_contacts = {"stand":contact_phase_quadru,
 
 c_phases = ["stand", "air", "stand"]
 
-timings = [int(T_ds/2), T_ss, T_ds]
+timings = [50, 30, 50]
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -197,7 +197,7 @@ device.initializeJoints(model_handler.getReferenceState()[:nq])
 
 for i in range(40):
     device.setFrictionCoefficients(i, 10, 0)
-#device.changeCamera(1.0, 60, -15, [0.6, -0.2, 0.5])
+# device.changeCamera(1.0, 60, -15, [0.6, -0.2, 0.5])
 
 q_meas, v_meas = device.measureState()
 x_measured  = np.concatenate([q_meas, v_meas])
@@ -232,7 +232,7 @@ torques_before_qp = []
 
 com_c =  []
 com_fd = []
-comp_times = [60, 70, 80, 90, 100]
+comp_times = [60, 100, 110]
 
 # vitesse du robot
 v = np.zeros(6)
@@ -243,7 +243,7 @@ mpc.velocity_base = v
 go2centr = Go2CentroidalOCP(model_handler)
 
 # number of simulation steps
-n_steps = 150
+n_steps = 200
 
 for t in range(n_steps):
     print("Time " + str(t))

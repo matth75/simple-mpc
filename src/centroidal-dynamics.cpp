@@ -1,5 +1,7 @@
 #include "simple-mpc/centroidal-dynamics.hpp"
+#include "simple-mpc/ocp-handler.hpp"
 
+#include <Eigen/src/Core/Matrix.h>
 #include <aligator/modelling/centroidal/angular-acceleration.hpp>
 #include <aligator/modelling/centroidal/angular-momentum.hpp>
 #include <aligator/modelling/centroidal/centroidal-acceleration.hpp>
@@ -9,6 +11,7 @@
 #include <aligator/modelling/centroidal/linear-momentum.hpp>
 #include <aligator/modelling/dynamics/centroidal-fwd.hpp>
 #include <aligator/modelling/dynamics/integrator-euler.hpp>
+#include <stdexcept>
 
 namespace simple_mpc
 {
@@ -40,7 +43,7 @@ namespace simple_mpc
     const std::map<std::string, bool> & contact_phase,
     const std::map<std::string, pinocchio::SE3> & contact_pose,
     const std::map<std::string, Eigen::VectorXd> & contact_force,
-    const std::map<std::string, bool> & /*land_constraint*/)
+    const std::map<std::string, bool> & land_constraint)
   {
     auto space = VectorSpace(nx_);
     auto rcost = CostStack(space, nu_);
@@ -102,6 +105,19 @@ namespace simple_mpc
       }
       i++;
     }
+    // com z component <= com_ref z before and after landing
+    auto const & name = model_handler_.getFeetNames()[0];
+    if (land_constraint.at(name)){
+      Eigen::Vector3d vec(0.0, 0.0, 0.33);
+      auto com = CentroidalCoMResidual(nx_, nu_, vec);
+      auto com_slice = FunctionSliceXpr(com, 2);
+      stm.addConstraint(com_slice, NegativeOrthant());
+    }
+    // add box constraint to forces z component 
+     Eigen::VectorXd umin = Eigen::VectorXd::Zero(12);
+     Eigen::VectorXd umax {{0.0, 0.0, 250.0, 0.0, 0.0, 250.0, 0.0, 0.0, 250.0, 0.0, 0.0, 250.0}};
+     auto forces_cstr = ControlErrorResidual(nx_, nu_);
+     stm.addConstraint(forces_cstr, BoxConstraint(umin, umax));
     return stm;
   }
 
@@ -321,9 +337,22 @@ namespace simple_mpc
     {
       throw std::runtime_error("Create problem first!");
     }
-    CentroidalCoMResidual com_cstr = CentroidalCoMResidual(ndx_, nu_, com_ref);
+    // Custom terminal constraints for jump motion
 
-    // problem_->addTerminalConstraint(com_cstr, EqualityConstraint());
+    // position of com along z axis = com of reference
+    CentroidalCoMResidual com_cstr = CentroidalCoMResidual(ndx_, nu_, com_ref);
+    std::vector<int> slicer = {2};
+    FunctionSliceXpr com_slice = FunctionSliceXpr(com_cstr, slicer);
+    problem_->addTerminalConstraint(com_slice, EqualityConstraint());
+
+    // Linear and angular momentum = 0 at the end of the motion. Constraint should be active ssi contact[-1]=Contact Phase 
+    // otherwise it creates absurd trajectories !!!
+    
+    auto lin_cstr = LinearMomentumResidual(nx_, nu_, Eigen::Vector3d::Zero());
+    problem_->addTerminalConstraint(lin_cstr, EqualityConstraint());
+
+    auto ang_cstr = AngularMomentumResidual(nx_, nu_, Eigen::Vector3d::Zero());
+    problem_->addTerminalConstraint(ang_cstr, EqualityConstraint());
     terminal_constraint_ = false;
   }
 

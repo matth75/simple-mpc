@@ -42,7 +42,7 @@ namespace simple_mpc
       std::map<std::string, bool> land_constraint;
       for (auto const & name : model_handler_.getFeetNames())
       {
-        if (!previous_phases.at(name) and contact_phases[i].at(name))
+        if ((!previous_phases.at(name) and contact_phases[i].at(name))or(previous_phases.at(name) and !contact_phases[i].at(name)))
           land_constraint.insert({name, true});
         else
           land_constraint.insert({name, false});
@@ -129,6 +129,17 @@ namespace simple_mpc
 
     problem_ = std::make_unique<TrajOptProblem>(x0, std::move(stage_models), createTerminalCost());
     problem_initialized_ = true;
+
+    // const auto& last_phase = contact_phases.back();  // get last element
+
+    // // check for contact at the last phase
+    // bool all_true = true;
+    // for (const auto& pair : last_phase) {
+    //     if (!pair.second) {
+    //         all_true = false;
+    //         break;
+    //     }
+    // }
 
     if (terminal_constraint)
     {

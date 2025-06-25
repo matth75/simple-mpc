@@ -102,14 +102,14 @@ possible_contacts = {"stand":[True, True, True, True],
                     }
 
 # contact phases and corresponding timings
-T_ss = 60   # for testing purposes
-T_ds = 50
+T_ss = 15   # for testing purposes
+T_ds = 100 - T_ss
 
 # c_phases = ["stand", "FL_up", "air", "RL_up", "stand"]
 c_phases = ["stand", "air", "stand"]
 
 # timings = [30, 10, 30, 2, 30]
-timings = [T_ds, T_ss, 50]
+timings = [T_ds, T_ss, 0]
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -136,14 +136,6 @@ for c in contact_phases:
     else:
         uref.append(np.zeros(12))
 
-
-""" Define feet trajectory """
-swing_apex = 0.15
-x_forward = 0.0
-y_forward = 0.030
-foot_yaw = 0
-y_gap = 0.18
-x_depth = 0
 
 """ Cost weights and stage creation """
 
@@ -180,8 +172,8 @@ def createStage(contact, i, feet_pose, ur):
     contact_map = aligator.ContactMap(feet_name, contact, contact_pose)
 
     # residuals of COM, linear & angular momentum / accelerations
-    centroidal_com = aligator.CentroidalCoMResidual(nx, nu, np.array(com0))
-    forces = aligator.ControlErrorResidual(space.ndx, nu)
+    # centroidal_com = aligator.CentroidalCoMResidual(nx, nu, np.array(com0))
+    # forces = aligator.ControlErrorResidual(space.ndx, nu)
     linear_mom = aligator.LinearMomentumResidual(nx, nu, np.zeros(3))
     angular_mom = aligator.AngularMomentumResidual(nx, nu, np.zeros(3))
     linear_acc = aligator.CentroidalAccelerationResidual(nx, nu, mass, gravity, contact_map, force_size)
@@ -216,6 +208,8 @@ def createStage(contact, i, feet_pose, ur):
 
 feet_pose = [rdata.oMf[idx].copy() for idx in feet_ids]
 
+# contact_phases = contact_phases[30:130]
+# uref = uref[30:130]
 T_mpc = len(contact_phases)    # nombre de résolutions d'ocp  ~ temps de la simu
 
 # create simulation stages (for each contact phase)
@@ -228,11 +222,13 @@ term_cost = aligator.CostStack(space, nu)
 
 # create an OCP instance
 T_mpc = len(stages)
-# x0[5] = 10
+# x0[5] = 5
+# x0[2] = 0.25
 problem = aligator.TrajOptProblem(x0, stages, term_cost)
 
 """ Add some terminal constraints to guarantee the stability of the robot at the end of the horizon"""
 
+# Really important test !!! Otherwise trajectories are absurd to satisfy lin_mom[-1] = ang_mom[-1] = 0
 if contact_phases[-1] == [True, True, True, True]:
     # vitesse et moment angulaire = 0 au bout de l'horizon
     linear_mom = aligator.LinearMomentumResidual(nx, nu, np.zeros(3))
@@ -249,41 +245,12 @@ com_pos = aligator.LinearFunctionComposition(com_pos, np.diag(np.array([0,0,1]))
 term_stage_cstr = aligator.StageConstraint(com_pos, constraints.EqualityConstraintSet())
 problem.addTerminalConstraint(term_stage_cstr)
 
-angular_mom = aligator.AngularMomentumResidual(nx, nu, np.zeros(3))
-term_stage_cstr = aligator.StageConstraint(angular_mom, constraints.EqualityConstraintSet())
-# problem.addTerminalConstraint(term_stage_cstr)
-
-# # position en z du com = z du com de référence
-# com_pos = aligator.StateErrorResidual(space, nu, com0)[2]
-# term_stage_cstr = aligator.StageConstraint(com_pos, constraints.EqualityConstraintSet())
-# problem.addTerminalConstraint(term_stage_cstr)
-
-
-# angular momentum acceleration = 0
-contact_pose = [foot.translation for foot in feet_pose]
-contact_map = aligator.ContactMap(feet_name, contact_phases[-1], contact_pose)
-
-angular_acc = aligator.AngularAccelerationResidual(nx, nu, mass, gravity, contact_map, force_size)
-term_stage_cstr = aligator.StageConstraint(angular_acc, constraints.EqualityConstraintSet())
-# problem.addTerminalConstraint(term_stage_cstr)
-
-# z = com0|z
-com_pos = aligator.CentroidalCoMResidual(space.ndx, nu, com0)
-com_pos = aligator.LinearFunctionComposition(com_pos, np.diag(np.array([0,0,1]))) # just z component
-term_stage_cstr = aligator.StageConstraint(com_pos, constraints.EqualityConstraintSet())
-problem.addTerminalConstraint(term_stage_cstr)
-
-# z = com0|z
-com_pos = aligator.CentroidalCoMResidual(space.ndx, nu, com0)
-com_pos = aligator.LinearFunctionComposition(com_pos, np.diag(np.array([0,0,1]))) # just z component
-term_stage_cstr = aligator.StageConstraint(com_pos, constraints.EqualityConstraintSet())
-problem.addTerminalConstraint(term_stage_cstr)
 """ Parametrize the solver"""
 
 TOL = 1e-5
 mu_init = 1e-8 
 
-max_iters = 50  # easy move, should not take too many iterations
+max_iters = 5  # easy move, should not take too many iterations
 verbose = aligator.VerboseLevel.VERBOSE
 solver = aligator.SolverProxDDP(TOL, mu_init, verbose=verbose)
 #solver = aligator.SolverFDDP(TOL, verbose=verbose)
@@ -313,5 +280,6 @@ print(res)
 xs = np.array(res.xs)
 us = np.array(res.us)
 
-go2.plot_results(xs, T_ds, T_ds + T_ss)
-go2.plot_forces(np.array(res.us))
+# go2.plot_results(xs, T_ds, T_ds + T_ss)
+go2.plot_results(xs)
+# go2.plot_forces(np.array(res.us))

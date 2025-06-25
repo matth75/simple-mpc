@@ -46,7 +46,7 @@ def plot_results(res:np.array, T_jump:int=0, T_land:int=0, show_plot:bool=True, 
             axs[i].axvline(T_land, ls='--', color="teal")
 
     # add labels for the two minimums and the maximum of the com z position
-    if len(com) > 0:
+    if len(com) > 0 and T_jump >0 and T_land >0:
         min1_z = np.min(com[:T_jump,2])
         min2_z = np.min(com[T_land:,2])
         max_z = np.max(com[:,2])

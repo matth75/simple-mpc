@@ -91,6 +91,12 @@ namespace simple_mpc
     com0_ = data_handler_->getData().com[0];
     now_ = WALKING;
 
+    // init all com_refs_ to com0_
+    for (size_t i = 0; i<ocp_handler_->getSize(); i++)
+    {
+      com_refs_.push_back(com0_);
+    }
+
     velocity_base_.setZero();
     next_pose_.setZero();
     twist_vect_.setZero();

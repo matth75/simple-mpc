@@ -120,7 +120,7 @@ problem_conf_fd = dict(
     force_size=3,
     w_forces=np.diag(w_forces_lin),
     w_frame=w_frame,
-    w_com = np.eye(3) * 1e3,
+    w_com = np.eye(3) * 1e-3,    # for CoM tracking !! that's great
     umin=-model_handler.getModel().effortLimit[6:],
     umax=model_handler.getModel().effortLimit[6:],
     qmin=model_handler.getModel().lowerPositionLimit[7:],
@@ -369,7 +369,7 @@ if True:
             mpc_fd.getDataHandler().updateInternalData(x_measured, True)
 
             x_centr = mpc_fd.getDataHandler().getCentroidalState()
-            mpc_centr.getDataHandler().updateInternalData(x_centr, True)
+            mpc_centr.getDataHandler().updateInternalData(x_measured, True) # always x_measured for updateInternalData()
 
             current_torque = u_interp - 1. * mpc_fd.Ks[0] @ model_handler.difference(
                 x_measured, x_interp

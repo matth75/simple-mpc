@@ -4,6 +4,7 @@
 #include <Eigen/src/Core/Matrix.h>
 #include <aligator/modelling/centroidal/angular-acceleration.hpp>
 #include <aligator/modelling/centroidal/angular-momentum.hpp>
+#include <aligator/modelling/centroidal/centroidal-translation.hpp>
 #include <aligator/modelling/centroidal/centroidal-acceleration.hpp>
 #include <aligator/modelling/centroidal/centroidal-friction-cone.hpp>
 #include <aligator/modelling/centroidal/centroidal-translation.hxx>
@@ -21,6 +22,7 @@ namespace simple_mpc
   using CentroidalAccelerationResidual = CentroidalAccelerationResidualTpl<double>;
   using AngularAccelerationResidual = AngularAccelerationResidualTpl<double>;
   using LinearMomentumResidual = LinearMomentumResidualTpl<double>;
+  using CentroidalCoMResidual = CentroidalCoMResidualTpl<double>;
   using AngularMomentumResidual = AngularMomentumResidualTpl<double>;
   using CentroidalCoMResidual = CentroidalCoMResidualTpl<double>;
   using CentroidalWrenchConeResidual = CentroidalWrenchConeResidualTpl<double>;
@@ -271,6 +273,24 @@ namespace simple_mpc
     com_ref_ = pose_base.head(3);
     cfr->setReference(com_ref_);
   }
+    // setter and getter for CoM Ref
+  const Eigen::Vector3d CentroidalOCP::getCoMref(const std::size_t t) 
+  {
+    // CostStack * cs = getCostStack(t);
+    // QuadraticResidualCost * qrc = cs->getComponent<QuadraticResidualCost>("com_cost");
+    // CentroidalCoMResidual * cfr = qrc->getResidual<CentroidalCoMResidual>();
+    // return cfr->getReference();
+    return Eigen::Vector3d::Zero();
+
+  }
+  void CentroidalOCP::setCoMref(const std::size_t t, const Eigen::Vector3d com_reference) 
+  {
+    // assert(com_reference.size() == 3 && "pose_base not of the right size");
+    // CostStack * cs = getCostStack(t);
+    // QuadraticResidualCost * qrc = cs->getComponent<QuadraticResidualCost>("com_cost");
+    // CentroidalCoMResidual * cfr = qrc->getResidual<CentroidalCoMResidual>();
+    // cfr->setReference(com_reference);
+  }
 
   const Eigen::VectorXd CentroidalOCP::getProblemState(const RobotDataHandler & data_handler)
   {
@@ -348,11 +368,11 @@ namespace simple_mpc
     // Linear and angular momentum = 0 at the end of the motion. Constraint should be active ssi contact[-1]=Contact Phase 
     // otherwise it creates absurd trajectories !!!
     
-    auto lin_cstr = LinearMomentumResidual(nx_, nu_, Eigen::Vector3d::Zero());
-    problem_->addTerminalConstraint(lin_cstr, EqualityConstraint());
+    // auto lin_cstr = LinearMomentumResidual(nx_, nu_, Eigen::Vector3d::Zero());
+    // problem_->addTerminalConstraint(lin_cstr, EqualityConstraint());
 
-    auto ang_cstr = AngularMomentumResidual(nx_, nu_, Eigen::Vector3d::Zero());
-    problem_->addTerminalConstraint(ang_cstr, EqualityConstraint());
+    // auto ang_cstr = AngularMomentumResidual(nx_, nu_, Eigen::Vector3d::Zero());
+    // problem_->addTerminalConstraint(ang_cstr, EqualityConstraint());
     terminal_constraint_ = false;
   }
 

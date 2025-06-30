@@ -93,6 +93,8 @@ namespace simple_mpc
     std::vector<bool> getContactState(const std::size_t t) override;
     void setReferenceState(const std::size_t t, const ConstVectorRef & x_ref) override;
     const ConstVectorRef getReferenceState(const std::size_t t) override;
+    const Eigen::Vector3d getCoMref(const std::size_t t) override;
+    void setCoMref(const std::size_t t, const Eigen::Vector3d com_reference) override;
 
     void computeControlFromForces(const std::map<std::string, Eigen::VectorXd> & force_refs);
 

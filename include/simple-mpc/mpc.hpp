@@ -119,6 +119,11 @@ namespace simple_mpc
       velocity_base_ = v;
     }
 
+    void setReferenceCoMs(std::vector<Eigen::Vector3d> input_com_reference)
+    {
+      com_refs_ = input_com_reference;
+    }
+
     void setReferenceState(const VectorXd & state_ref)
     {
       x_reference_ = state_ref;
@@ -194,6 +199,7 @@ namespace simple_mpc
     // Initial quantities
     VectorXd x0_;
     VectorXd u0_;
+    std::vector<Eigen::Vector3d> com_refs_;
   };
 
 } // namespace simple_mpc

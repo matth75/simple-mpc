@@ -1,6 +1,7 @@
 #include "simple-mpc/kinodynamics.hpp"
 
 #include <aligator/modelling/centroidal/centroidal-friction-cone.hpp>
+#include <aligator/modelling/centroidal/centroidal-translation.hpp>
 #include <aligator/modelling/centroidal/centroidal-wrench-cone.hpp>
 #include <aligator/modelling/dynamics/integrator-semi-euler.hpp>
 #include <aligator/modelling/dynamics/kinodynamics-fwd.hpp>
@@ -19,6 +20,7 @@ namespace simple_mpc
   using CentroidalMomentumDerivativeResidual = CentroidalMomentumDerivativeResidualTpl<double>;
   using CentroidalMomentumResidual = CentroidalMomentumResidualTpl<double>;
   using CentroidalWrenchConeResidual = CentroidalWrenchConeResidualTpl<double>;
+  using CentroidalCoMResidual = CentroidalCoMResidualTpl<double>;
   using CentroidalFrictionConeResidual = CentroidalFrictionConeResidualTpl<double>;
   using FramePlacementResidual = FramePlacementResidualTpl<double>;
   using FrameTranslationResidual = FrameTranslationResidualTpl<double>;
@@ -372,6 +374,25 @@ namespace simple_mpc
 
     problem_->addTerminalConstraint(com_cstr, EqualityConstraint());
     terminal_constraint_ = true;
+  }
+
+  // setter and getter for CoM Ref
+  const Eigen::Vector3d KinodynamicsOCP::getCoMref(const std::size_t t) 
+  {
+    // CostStack * cs = getCostStack(t);
+    // QuadraticResidualCost * qrc = cs->getComponent<QuadraticResidualCost>("com_cost");
+    // CentroidalCoMResidual * cfr = qrc->getResidual<CentroidalCoMResidual>();
+    // return cfr->getReference();
+    return Eigen::Vector3d::Zero();
+
+  }
+  void KinodynamicsOCP::setCoMref(const std::size_t t, const Eigen::Vector3d com_reference) 
+  {
+    // assert(com_reference.size() == 3 && "pose_base not of the right size");
+    // CostStack * cs = getCostStack(t);
+    // QuadraticResidualCost * qrc = cs->getComponent<QuadraticResidualCost>("com_cost");
+    // CentroidalCoMResidual * cfr = qrc->getResidual<CentroidalCoMResidual>();
+    // cfr->setReference(com_reference);
   }
 
   void KinodynamicsOCP::updateTerminalConstraint(const Eigen::Vector3d & com_ref)

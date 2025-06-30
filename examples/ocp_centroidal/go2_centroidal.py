@@ -228,16 +228,19 @@ problem = aligator.TrajOptProblem(x0, stages, term_cost)
 
 """ Add some terminal constraints to guarantee the stability of the robot at the end of the horizon"""
 
-# Really important test !!! Otherwise trajectories are absurd to satisfy lin_mom[-1] = ang_mom[-1] = 0
-if contact_phases[-1] == [True, True, True, True]:
-    # vitesse et moment angulaire = 0 au bout de l'horizon
-    linear_mom = aligator.LinearMomentumResidual(nx, nu, np.zeros(3))
-    term_stage_cstr = aligator.StageConstraint(linear_mom, constraints.EqualityConstraintSet())
-    problem.addTerminalConstraint(term_stage_cstr)
+"""
+Turns out that this part is useless
+"""
+# # Really important test !!! Otherwise trajectories are absurd to satisfy lin_mom[-1] = ang_mom[-1] = 0
+# if contact_phases[-1] == [True, True, True, True]:
+#     # vitesse et moment angulaire = 0 au bout de l'horizon
+#     linear_mom = aligator.LinearMomentumResidual(nx, nu, np.zeros(3))
+#     term_stage_cstr = aligator.StageConstraint(linear_mom, constraints.EqualityConstraintSet())
+#     problem.addTerminalConstraint(term_stage_cstr)
 
-    ang_mom = aligator.AngularMomentumResidual(nx, nu, np.zeros(3))
-    term_stage_cstr = aligator.StageConstraint(ang_mom, constraints.EqualityConstraintSet())
-    problem.addTerminalConstraint(term_stage_cstr)
+#     ang_mom = aligator.AngularMomentumResidual(nx, nu, np.zeros(3))
+#     term_stage_cstr = aligator.StageConstraint(ang_mom, constraints.EqualityConstraintSet())
+#     problem.addTerminalConstraint(term_stage_cstr)
 
 # position en z du com = z du com de référence
 com_pos = aligator.CentroidalCoMResidual(space.ndx, nu, com0)

@@ -2,6 +2,7 @@
 #include "simple-mpc/ocp-handler.hpp"
 
 #include "aligator/modelling/dynamics/multibody-constraint-fwd.hpp"
+#include <aligator/modelling/centroidal/centroidal-translation.hpp>
 #include <aligator/modelling/dynamics/integrator-semi-euler.hpp>
 #include <aligator/modelling/multibody/center-of-mass-translation.hpp>
 #include <aligator/modelling/multibody/centroidal-momentum.hpp>
@@ -18,6 +19,7 @@ namespace simple_mpc
   using namespace aligator;
   using ContactForceResidual = ContactForceResidualTpl<double>;
   using CentroidalMomentumResidual = CentroidalMomentumResidualTpl<double>;
+  using CentroidalCoMResidual = CentroidalCoMResidualTpl<double>;
   using MultibodyPhaseSpace = proxsuite::nlp::MultibodyPhaseSpace<double>;
   using MultibodyWrenchConeResidual = aligator::MultibodyWrenchConeResidualTpl<double>;
   using MultibodyFrictionConeResidual = MultibodyFrictionConeResidualTpl<double>;
@@ -86,6 +88,9 @@ namespace simple_mpc
 
     auto space = MultibodyPhaseSpace(model_handler_.getModel());
     auto rcost = CostStack(space, nu_);
+
+    auto com_cost = CentroidalCoMResidual(ndx_, nu_, Eigen::Vector3d::Zero());
+    rcost.addCost("com_cost", QuadraticResidualCost(space, com_cost, settings_.w_com));
 
     rcost.addCost("state_cost", QuadraticStateCost(space, nu_, model_handler_.getReferenceState(), settings_.w_x));
     rcost.addCost("control_cost", QuadraticControlCost(space, Eigen::VectorXd::Zero(nu_), settings_.w_u));
@@ -366,6 +371,23 @@ namespace simple_mpc
     x0_ = getReferenceState(t);
     x0_.head(7) = pose_base;
     qc->setTarget(x0_);
+  }
+  // setter and getter for CoM Ref
+  const Eigen::Vector3d FullDynamicsOCP::getCoMref(const std::size_t t) 
+  {
+    CostStack * cs = getCostStack(t);
+    QuadraticResidualCost * qrc = cs->getComponent<QuadraticResidualCost>("com_cost");
+    CentroidalCoMResidual * cfr = qrc->getResidual<CentroidalCoMResidual>();
+    return cfr->getReference();
+
+  }
+  void FullDynamicsOCP::setCoMref(const std::size_t t, const Eigen::Vector3d com_reference) 
+  {
+    assert(com_reference.size() == 3 && "pose_base not of the right size");
+    CostStack * cs = getCostStack(t);
+    QuadraticResidualCost * qrc = cs->getComponent<QuadraticResidualCost>("com_cost");
+    CentroidalCoMResidual * cfr = qrc->getResidual<CentroidalCoMResidual>();
+    cfr->setReference(com_reference);
   }
 
   const Eigen::VectorXd FullDynamicsOCP::getProblemState(const RobotDataHandler & data_handler)

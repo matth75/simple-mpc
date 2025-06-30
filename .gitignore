@@ -9,6 +9,10 @@
 
 # pycache files
 *.pyc
+*.npy
+
+# images
+*.png
 
 # Precompiled Headers
 *.gch

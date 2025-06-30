@@ -120,7 +120,7 @@ problem_conf_fd = dict(
     force_size=3,
     w_forces=np.diag(w_forces_lin),
     w_frame=w_frame,
-    w_com = np.eye(3) * 1e-3,    # for CoM tracking !! that's great
+    w_com = np.eye(3) * 1e-2,    # for CoM tracking !! that's great
     umin=-model_handler.getModel().effortLimit[6:],
     umax=model_handler.getModel().effortLimit[6:],
     qmin=model_handler.getModel().lowerPositionLimit[7:],
@@ -280,7 +280,7 @@ for s in range(T_fd):
 res_fd = np.array(res_fd)
 
 # plot_results(res)
-compare_predictions(res_c, res_fd)
+# compare_predictions(res_c, res_fd)
 # plot_results(res_c)
 # plot_forces(np.array(mpc_centr.us))
 
@@ -290,7 +290,7 @@ force_FR = []
 force_RL = []
 force_RR = []
 
-comp_times = [10, 20, 30, 50, 70, 60, 80]
+comp_times = [90]
 
 nsteps = 150    # length of simulation
 N_simu = 10     # nb of simulation steps between two OCP solves
@@ -308,8 +308,11 @@ if True:
 
 
         # start = time.time()
-        mpc_fd.iterate(x_measured)
         mpc_centr.iterate(x_measured)
+        com_predicted = np.array(mpc_centr.xs)
+        com_predicted = com_predicted[:50,:3]
+        mpc_fd.setComReferences = list(com_predicted)
+        mpc_fd.iterate(x_measured)
 
         # end = time.time()
         # solve_time.append(end - start)
@@ -350,7 +353,7 @@ if True:
             traj_fd = np.array(traj_fd)
 
             compare_predictions(np.array(mpc_centr.xs), traj_fd)
-            plot_forces(np.array(mpc_centr.us))
+            # plot_forces(np.array(mpc_centr.us))
             # plot_forces(np.array(forces_fd))
 
 

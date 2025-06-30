@@ -70,6 +70,8 @@ namespace simple_mpc
 
       StdVectorPythonVisitor<std::vector<MapBool>, true>::expose("StdVec_MapBool");
 
+      StdVectorPythonVisitor<std::vector<Eigen::Vector3d>, true>::expose("StdVec_EigVec3d");
+
       bp::class_<MPC, boost::noncopyable>("MPC", bp::no_init)
         .def("__init__", bp::make_constructor(&createMPC, bp::default_call_policies()))
         .def("getSettings", &getSettings)
@@ -81,6 +83,7 @@ namespace simple_mpc
         .def_readwrite("velocity_base", &MPC::velocity_base_)
         .def_readwrite("x_reference", &MPC::x_reference_)
         .def_readonly("ocp_handler", &MPC::ocp_handler_)
+        .def_readwrite("setComReferences", &MPC::com_refs_)
         .def("switchToWalk", &MPC::switchToWalk, ("self"_a, "velocity_base"))
         .def("switchToStand", &MPC::switchToStand, "self"_a)
         .def("getFootTakeoffCycle", &MPC::getFootTakeoffCycle, ("self"_a, "ee_name"))

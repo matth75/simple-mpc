@@ -322,6 +322,11 @@ namespace simple_mpc
     com_ref[2] += com0_[2];
 
     ocp_handler_->updateTerminalConstraint(com_ref);
+
+    for (size_t t=0;t<ocp_handler_->getSize(); t++)
+    {
+      ocp_handler_->setCoMref(t, com_refs_[t]);
+    }
   }
 
   void MPC::setReferencePose(const std::size_t t, const std::string & ee_name, const pinocchio::SE3 & pose_ref)

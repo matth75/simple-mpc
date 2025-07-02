@@ -64,10 +64,11 @@ w_legpos = [10, 10, 10]
 w_basevel = [10, 10, 10, 10, 10, 10]
 w_legvel = [0.1, 0.1, 0.1]
 w_x = np.array(w_basepos + w_legpos * 4 + w_basevel + w_legvel * 4)
-w_cent_lin = np.array([0.0, 0.0, 0])
-w_cent_ang = np.array([0, 0, 0])
+w_cent_lin = np.array([0.001, 0.001, 1])
+w_cent_ang = np.array([0.0001, 0.0001, 0.001])
 w_forces_lin = np.array([0.0001, 0.0001, 0.0001])
 w_frame = np.eye(3)*1e3
+w_com = np.diag(np.array([0.01, 0.01, 1]))
 
 dt = 0.01   # simulation timestep
 
@@ -120,7 +121,7 @@ problem_conf_fd = dict(
     force_size=3,
     w_forces=np.diag(w_forces_lin),
     w_frame=w_frame,
-    w_com = np.eye(3) * 1e-2,    # for CoM tracking !! that's great
+    w_com = w_com,    # for CoM tracking !! that's great
     umin=-model_handler.getModel().effortLimit[6:],
     umax=model_handler.getModel().effortLimit[6:],
     qmin=model_handler.getModel().lowerPositionLimit[7:],
@@ -215,7 +216,7 @@ mpc_fd = MPC(mpc_conf, fd_problem)
 # choose the phases of the motion
 c_phases = ["stand", "air", "stand"]
 
-timings = [T_fd, 60, 25]
+timings = [T_fd, 40, 25]
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -290,9 +291,9 @@ force_FR = []
 force_RL = []
 force_RR = []
 
-comp_times = [90]
+comp_times = [90, 130]
 
-nsteps = 150    # length of simulation
+nsteps = 200    # length of simulation
 N_simu = 10     # nb of simulation steps between two OCP solves
 
 if True:
@@ -309,9 +310,13 @@ if True:
 
         # start = time.time()
         mpc_centr.iterate(x_measured)
-        com_predicted = np.array(mpc_centr.xs)
-        com_predicted = com_predicted[:50,:3]
+        results = np.array(mpc_centr.xs)
+        com_predicted = results[:50,:3]
+        mom_predicted = results[:50,3:]
+
+        mpc_fd.MomReferences = list(mom_predicted)
         mpc_fd.setComReferences = list(com_predicted)
+        
         mpc_fd.iterate(x_measured)
 
         # end = time.time()
@@ -353,8 +358,8 @@ if True:
             traj_fd = np.array(traj_fd)
 
             compare_predictions(np.array(mpc_centr.xs), traj_fd)
-            # plot_forces(np.array(mpc_centr.us))
-            # plot_forces(np.array(forces_fd))
+            plot_forces(np.array(mpc_centr.us))
+            plot_forces(np.array(forces_fd))
 
 
         for j in range(N_simu):

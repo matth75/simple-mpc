@@ -157,12 +157,22 @@ namespace simple_mpc
 
       void setCoMref(const std::size_t t, const Eigen::Vector3d com_ref) override
       {
-        SIMPLE_MPC_PYTHON_OVERRIDE_PURE(void, "setCoMref", t, com_ref)
+        SIMPLE_MPC_PYTHON_OVERRIDE_PURE(void, "setCoMref", t, com_ref);
       }
 
       const Eigen::Vector3d getCoMref(const std::size_t t) override
       {
-        SIMPLE_MPC_PYTHON_OVERRIDE_PURE(Eigen::Vector3d, "getCoMref", t)
+        SIMPLE_MPC_PYTHON_OVERRIDE_PURE(Eigen::Vector3d, "getCoMref", t);
+      }
+
+      void setMomentumRef(const std::size_t t, const Eigen::VectorXd mom_ref) override
+      {
+        SIMPLE_MPC_PYTHON_OVERRIDE_PURE(void, "setMomentumRef", t, mom_ref);
+      }
+
+      const Eigen::VectorXd getMomentumRef(const std::size_t t) override 
+      {
+        SIMPLE_MPC_PYTHON_OVERRIDE_PURE(Eigen::VectorXd, "getMomentumRef", t);
       }
 
       const Eigen::VectorXd getProblemState(const RobotDataHandler & data_handler) override

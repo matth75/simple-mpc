@@ -292,6 +292,21 @@ namespace simple_mpc
     // cfr->setReference(com_reference);
   }
 
+  const Eigen::VectorXd CentroidalOCP::getMomentumRef(const std::size_t t)
+  {
+    // CostStack * cs = getCostStack(t);
+    // QuadraticResidualCost * qrc = cs->getComponent<QuadraticResidualCost>("centr_mom_cost");
+    // CentroidalMomentumResidual * cfr = qrc->getResidual<CentroidalMomentumResidual>();
+    return Eigen::VectorXd::Zero(6);
+  }
+  
+  void CentroidalOCP::setMomentumRef(const std::size_t t, const Eigen::VectorXd mom_reference) 
+  {
+    // CostStack * cs = getCostStack(t);
+    // QuadraticResidualCost * qrc = cs->getComponent<QuadraticResidualCost>("centr_mom_cost");
+    // CentroidalMomentumResidual * cfr = qrc->getResidual<CentroidalMomentumResidual>();
+    // cfr->setReference(mom_reference);
+  }
   const Eigen::VectorXd CentroidalOCP::getProblemState(const RobotDataHandler & data_handler)
   {
     return data_handler.getCentroidalState();

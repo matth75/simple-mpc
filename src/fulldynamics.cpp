@@ -96,7 +96,7 @@ namespace simple_mpc
     rcost.addCost("control_cost", QuadraticControlCost(space, Eigen::VectorXd::Zero(nu_), settings_.w_u));
 
     auto cent_mom = CentroidalMomentumResidual(space.ndx(), nu_, model_handler_.getModel(), Eigen::VectorXd::Zero(6));
-    rcost.addCost("centroidal_cost", QuadraticResidualCost(space, cent_mom, settings_.w_cent));
+    rcost.addCost("centr_mom_cost", QuadraticResidualCost(space, cent_mom, settings_.w_cent));
 
     // add a cost for the center of mass
     // Eigen::VectorXd com_ref(3);
@@ -388,6 +388,22 @@ namespace simple_mpc
     QuadraticResidualCost * qrc = cs->getComponent<QuadraticResidualCost>("com_cost");
     CentroidalCoMResidual * cfr = qrc->getResidual<CentroidalCoMResidual>();
     cfr->setReference(com_reference);
+  }
+
+  const Eigen::VectorXd FullDynamicsOCP::getMomentumRef(const std::size_t t)
+  {
+    CostStack * cs = getCostStack(t);
+    QuadraticResidualCost * qrc = cs->getComponent<QuadraticResidualCost>("centr_mom_cost");
+    CentroidalMomentumResidual * cfr = qrc->getResidual<CentroidalMomentumResidual>();
+    return cfr->getReference();
+  }
+
+  void FullDynamicsOCP::setMomentumRef(const std::size_t t, const Eigen::VectorXd mom_reference) 
+  {
+    CostStack * cs = getCostStack(t);
+    QuadraticResidualCost * qrc = cs->getComponent<QuadraticResidualCost>("centr_mom_cost");
+    CentroidalMomentumResidual * cfr = qrc->getResidual<CentroidalMomentumResidual>();
+    cfr->setReference(mom_reference);
   }
 
   const Eigen::VectorXd FullDynamicsOCP::getProblemState(const RobotDataHandler & data_handler)

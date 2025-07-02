@@ -84,6 +84,7 @@ namespace simple_mpc
         .def_readwrite("x_reference", &MPC::x_reference_)
         .def_readonly("ocp_handler", &MPC::ocp_handler_)
         .def_readwrite("setComReferences", &MPC::com_refs_)
+        .def_readwrite("MomReferences", &MPC::mom_refs_)
         .def("switchToWalk", &MPC::switchToWalk, ("self"_a, "velocity_base"))
         .def("switchToStand", &MPC::switchToStand, "self"_a)
         .def("getFootTakeoffCycle", &MPC::getFootTakeoffCycle, ("self"_a, "ee_name"))

@@ -395,6 +395,22 @@ namespace simple_mpc
     // cfr->setReference(com_reference);
   }
 
+  const Eigen::VectorXd KinodynamicsOCP::getMomentumRef(const std::size_t t)
+  {
+    // CostStack * cs = getCostStack(t);
+    // QuadraticResidualCost * qrc = cs->getComponent<QuadraticResidualCost>("centr_mom_cost");
+    // CentroidalMomentumResidual * cfr = qrc->getResidual<CentroidalMomentumResidual>();
+    return Eigen::VectorXd::Zero(6);
+  }
+  
+  void KinodynamicsOCP::setMomentumRef(const std::size_t t, const Eigen::VectorXd mom_reference) 
+  {
+    // CostStack * cs = getCostStack(t);
+    // QuadraticResidualCost * qrc = cs->getComponent<QuadraticResidualCost>("centr_mom_cost");
+    // CentroidalMomentumResidual * cfr = qrc->getResidual<CentroidalMomentumResidual>();
+    // cfr->setReference(mom_reference);
+  }
+
   void KinodynamicsOCP::updateTerminalConstraint(const Eigen::Vector3d & com_ref)
   {
     if (terminal_constraint_)

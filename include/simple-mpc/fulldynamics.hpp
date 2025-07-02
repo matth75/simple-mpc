@@ -108,6 +108,8 @@ namespace simple_mpc
     const ConstVectorRef getReferenceState(const std::size_t t) override;
     const Eigen::Vector3d getCoMref(const std::size_t t) override;
     void setCoMref(const std::size_t t, const Eigen::Vector3d com_reference) override;
+    const Eigen::VectorXd getMomentumRef(const std::size_t t) override;
+    void setMomentumRef(const std::size_t t, const Eigen::VectorXd mom_reference) override;
     FullDynamicsSettings getSettings()
     {
       return settings_;

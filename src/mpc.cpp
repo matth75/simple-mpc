@@ -95,6 +95,7 @@ namespace simple_mpc
     for (size_t i = 0; i<ocp_handler_->getSize(); i++)
     {
       com_refs_.push_back(com0_);
+      mom_refs_.push_back(Eigen::VectorXd::Zero(6));
     }
 
     velocity_base_.setZero();
@@ -326,6 +327,7 @@ namespace simple_mpc
     for (size_t t=0;t<ocp_handler_->getSize(); t++)
     {
       ocp_handler_->setCoMref(t, com_refs_[t]);
+      ocp_handler_->setMomentumRef(t, mom_refs_[t]);
     }
   }
 

@@ -89,6 +89,9 @@ namespace simple_mpc
     virtual const Eigen::Vector3d getCoMref(const std::size_t t) = 0;
     virtual void setCoMref(const std::size_t t, const Eigen::Vector3d com_reference) = 0;
 
+    virtual const Eigen::VectorXd getMomentumRef(const std::size_t t) = 0;
+    virtual void setMomentumRef(const std::size_t t, const Eigen::VectorXd mom_reference) = 0;
+
     // Setter and getter for forces reference
     virtual void setReferenceForces(const std::size_t t, const std::map<std::string, Eigen::VectorXd> & force_refs) = 0;
     virtual void

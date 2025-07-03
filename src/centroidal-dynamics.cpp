@@ -1,7 +1,6 @@
 #include "simple-mpc/centroidal-dynamics.hpp"
 #include "simple-mpc/ocp-handler.hpp"
 
-#include <Eigen/src/Core/Matrix.h>
 #include <aligator/modelling/centroidal/angular-acceleration.hpp>
 #include <aligator/modelling/centroidal/angular-momentum.hpp>
 #include <aligator/modelling/centroidal/centroidal-translation.hpp>
@@ -12,7 +11,6 @@
 #include <aligator/modelling/centroidal/linear-momentum.hpp>
 #include <aligator/modelling/dynamics/centroidal-fwd.hpp>
 #include <aligator/modelling/dynamics/integrator-euler.hpp>
-#include <stdexcept>
 
 namespace simple_mpc
 {
@@ -38,6 +36,7 @@ namespace simple_mpc
     control_ref_.resize(nu_);
     control_ref_.setZero();
     com_ref_.setZero();
+    com_ref_[2] = 0.31; // pretty bad but should work
     x0_.resize(9);
   }
 
@@ -73,8 +72,20 @@ namespace simple_mpc
       space.ndx(), nu_, model_handler_.getMass(), settings_.gravity, contact_map, settings_.force_size);
     auto angular_acc = AngularAccelerationResidual(
       space.ndx(), nu_, model_handler_.getMass(), settings_.gravity, contact_map, settings_.force_size);
-
-    rcost.addCost("com_cost", QuadraticResidualCost(space, com_res, settings_.w_com));
+    
+    // add a com_cost only when standing
+    for (auto const & name : model_handler_.getFeetNames())
+    {
+      if (contact_phase.at(name))
+      {
+        rcost.addCost("com_cost", QuadraticResidualCost(space, com_res, settings_.w_com));
+      }
+      else 
+      {
+        rcost.addCost("com_cost", QuadraticResidualCost(space, com_res, Eigen::MatrixXd::Zero(3,3)));
+      }
+    }
+    // rcost.addCost("com_cost", QuadraticResidualCost(space, com_res, settings_.w_com));
     rcost.addCost("control_cost", QuadraticControlCost(space, control_ref_, settings_.w_u));
     rcost.addCost("linear_mom_cost", QuadraticResidualCost(space, linear_mom, settings_.w_linear_mom));
     rcost.addCost("angular_mom_cost", QuadraticResidualCost(space, angular_mom, settings_.w_angular_mom));

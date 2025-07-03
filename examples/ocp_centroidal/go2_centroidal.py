@@ -102,14 +102,14 @@ possible_contacts = {"stand":[True, True, True, True],
                     }
 
 # contact phases and corresponding timings
-T_ss = 15   # for testing purposes
-T_ds = 100 - T_ss
+T_ss = 40   # for testing purposes
+T_ds = 50
 
 # c_phases = ["stand", "FL_up", "air", "RL_up", "stand"]
 c_phases = ["stand", "air", "stand"]
 
 # timings = [30, 10, 30, 2, 30]
-timings = [T_ds, T_ss, 0]
+timings = [T_ds, T_ss, 70]
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -147,7 +147,7 @@ w_control = np.array([   # 3D forces *4 legs = 12 = nu
     1,1,1
 ])
 w_control = np.diag(w_control) * 0.01
-w_com = np.diag([0,0,1])    # no constraint on com right now
+w_com = np.diag([0,0,10000])    # no constraint on com right now
 
 umin = np.array([0,0,0] * 4)
 umax = np.array([0,0,250]* 4)
@@ -172,7 +172,7 @@ def createStage(contact, i, feet_pose, ur):
     contact_map = aligator.ContactMap(feet_name, contact, contact_pose)
 
     # residuals of COM, linear & angular momentum / accelerations
-    # centroidal_com = aligator.CentroidalCoMResidual(nx, nu, np.array(com0))
+    centroidal_com = aligator.CentroidalCoMResidual(nx, nu, np.array(com0))
     # forces = aligator.ControlErrorResidual(space.ndx, nu)
     linear_mom = aligator.LinearMomentumResidual(nx, nu, np.zeros(3))
     angular_mom = aligator.AngularMomentumResidual(nx, nu, np.zeros(3))
@@ -183,7 +183,10 @@ def createStage(contact, i, feet_pose, ur):
     rcost = aligator.CostStack(space, nu)   
     # add all costs to the running cost
     rcost.addCost("control_cost", aligator.QuadraticControlCost(space, ur, w_control))
-    # rcost.addCost("com_cost", aligator.QuadraticResidualCost(space, centroidal_com, w_com))
+
+    if contact == [True, True, True, True]:
+        rcost.addCost("com_cost", aligator.QuadraticResidualCost(space, centroidal_com, w_com))
+
     rcost.addCost("linear_mom_cost", aligator.QuadraticResidualCost(space, linear_mom, w_lin))
     rcost.addCost("angular_mom_cost", aligator.QuadraticResidualCost(space, angular_mom, w_ang))
     rcost.addCost("angular_acc_cost", aligator.QuadraticResidualCost(space, angular_acc, w_angular_acc))
@@ -253,7 +256,7 @@ problem.addTerminalConstraint(term_stage_cstr)
 TOL = 1e-5
 mu_init = 1e-8 
 
-max_iters = 5  # easy move, should not take too many iterations
+max_iters = 50  # easy move, should not take too many iterations
 verbose = aligator.VerboseLevel.VERBOSE
 solver = aligator.SolverProxDDP(TOL, mu_init, verbose=verbose)
 #solver = aligator.SolverFDDP(TOL, verbose=verbose)
@@ -283,6 +286,6 @@ print(res)
 xs = np.array(res.xs)
 us = np.array(res.us)
 
-# go2.plot_results(xs, T_ds, T_ds + T_ss)
-go2.plot_results(xs)
-# go2.plot_forces(np.array(res.us))
+go2.plot_results(xs, T_ds, T_ds + T_ss)
+# go2.plot_results(xs)
+go2.plot_forces(np.array(res.us))

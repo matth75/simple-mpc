@@ -68,7 +68,7 @@ w_cent_lin = np.array([0.001, 0.001, 1])
 w_cent_ang = np.array([0.0001, 0.0001, 0.001])
 w_forces_lin = np.array([0.0001, 0.0001, 0.0001])
 w_frame = np.eye(3)*1e3
-w_com = np.diag(np.array([0.01, 0.01, 1]))
+w_com_fd = np.diag(np.array([0.01, 0.01, 1]))
 
 dt = 0.01   # simulation timestep
 
@@ -121,7 +121,7 @@ problem_conf_fd = dict(
     force_size=3,
     w_forces=np.diag(w_forces_lin),
     w_frame=w_frame,
-    w_com = w_com,    # for CoM tracking !! that's great
+    w_com = w_com_fd,    # for CoM tracking !! that's great
     umin=-model_handler.getModel().effortLimit[6:],
     umax=model_handler.getModel().effortLimit[6:],
     qmin=model_handler.getModel().lowerPositionLimit[7:],
@@ -150,7 +150,7 @@ w_control = np.array([   # 3D forces *4 legs = 12 = nu
     1,1,1
 ])
 w_control = np.diag(w_control) * 0.01
-w_com = np.diag([0,0,0])    # no constraint on com right now
+w_com_centr = np.diag([0,0,1])    # no constraint on com right now
 w_lin = np.diag(np.array([0.01, 0.01, 1]))  
 w_ang = np.diag(np.array([0.01, 0.01, 1]))
 w_linear_acc = 0.01 * np.eye(3)
@@ -160,7 +160,7 @@ w_angular_acc = np.diag(np.array([0.01, 1, 0.01]))
 problem_conf_ctr = dict(
     timestep=0.01,
     w_u=w_control,
-    w_com=w_com,
+    w_com=w_com_centr,
     w_linear_mom=w_lin,
     w_angular_mom=w_ang,
     w_linear_acc=w_linear_acc,
@@ -177,8 +177,8 @@ T_ctr = 100
 ctr_problem = CentroidalOCP(problem_conf_ctr, model_handler)
 ctr_problem.createProblem(data_handler.getCentroidalState(), T_ctr, force_size, gravity[2], True)
 
-linear_mom = aligator.LinearMomentumResidual(9, 12, np.zeros(3))
-term_stage_cstr = aligator.StageConstraint(linear_mom, aligator.constraints.EqualityConstraintSet())
+# linear_mom = aligator.LinearMomentumResidual(9, 12, np.zeros(3))
+# term_stage_cstr = aligator.StageConstraint(linear_mom, aligator.constraints.EqualityConstraintSet())
 # ctr_problem.getProblem().addTerminalConstraint(term_stage)
 
 # useless ??
@@ -216,7 +216,7 @@ mpc_fd = MPC(mpc_conf, fd_problem)
 # choose the phases of the motion
 c_phases = ["stand", "air", "stand"]
 
-timings = [T_fd, 40, 25]
+timings = [T_fd, 35, 50]
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -252,7 +252,8 @@ interpolator = Interpolator(model_handler.getModel())
 q_meas, v_meas = device.measureState()
 x_measured = np.concatenate([q_meas, v_meas])
 mpc_fd.getDataHandler().updateInternalData(x_measured, False)
-x_centr = mpc_fd.getDataHandler().getCentroidalState()
+mpc_centr.getDataHandler().updateInternalData(x_measured, False)
+x_centr = mpc_fd.getDataHandler().getCentroidalState()  
 
 
 ref_foot_pose = [mpc_fd.getDataHandler().getRefFootPose(mpc_fd.getModelHandler().getFeetNames()[i]) for i in range(4)]
@@ -291,9 +292,9 @@ force_FR = []
 force_RL = []
 force_RR = []
 
-comp_times = [90, 130]
+comp_times = []
 
-nsteps = 200    # length of simulation
+nsteps = 500    # length of simulation
 N_simu = 10     # nb of simulation steps between two OCP solves
 
 if True:
@@ -358,8 +359,8 @@ if True:
             traj_fd = np.array(traj_fd)
 
             compare_predictions(np.array(mpc_centr.xs), traj_fd)
-            plot_forces(np.array(mpc_centr.us))
-            plot_forces(np.array(forces_fd))
+            # plot_forces(np.array(mpc_centr.us))
+            # plot_forces(np.array(forces_fd))
 
 
         for j in range(N_simu):

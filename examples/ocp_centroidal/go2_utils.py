@@ -129,6 +129,42 @@ def plot_forces(f:np.array, show_plot:bool=True, save_png:str=""):
         plt.show()
 
 
+def compare_forces(f1:np.array, f2:np.array, show_plot:bool=True, save_png:str=""):
+    fig, axs = plt.subplots(4, 1, figsize=(15,10), sharex=True)
+    time = np.arange(f1.shape[0])
+
+    labels = ["FL foot", "FR_foot", "RL foot", "RR foot"]
+
+    for i,l in enumerate(labels):
+        axs[i].plot(time, f1[:,i*3], label = 'Centroidal x', color="blue")
+        axs[i].plot(time, f1[:,i*3 + 1], label = 'Centroidal y', color="red")
+        axs[i].plot(time, f1[:,i*3 + 2], label = 'Centroidal z', color="green")
+        axs[i].set_ylabel(l)
+        axs[i].legend()
+        axs[i].grid(True)
+
+    time = np.arange(f2.shape[0])
+    labels = ["FL foot", "FR_foot", "RL foot", "RR foot"]
+
+    for i,l in enumerate(labels):
+        axs[i].plot(time, f2[:,i*3], label = 'FD x', color ="cyan", ls="--")
+        axs[i].plot(time, f2[:,i*3 + 1], label = 'FD y', color="orange", ls="--")
+        axs[i].plot(time, f2[:,i*3 + 2], label = 'FD z', color="lime", ls="--")
+        axs[i].set_ylabel(l)
+        axs[i].legend()
+        axs[i].grid(True)
+    
+    
+    axs[0].set_title("Forces on each leg")
+    axs[-1].set_xlabel("Time (steps of simulation)")
+    plt.tight_layout()
+    
+    if len(save_png) > 0:
+        plt.savefig(f"/home/matthieu/simple/simple-mpc_ws/src/simple-mpc/examples/results/{save_png}.png")
+    if show_plot:
+        plt.show()
+
+
     
 
 def compare_predictions(res_centroidal:np.array, res_fd:np.array, show_plot:bool=True, save_png:str=""):

@@ -98,6 +98,18 @@ namespace simple_mpc
       mom_refs_.push_back(Eigen::VectorXd::Zero(6));
     }
 
+    // assumes force size = 3 !!
+  
+    for (size_t t=0; t<ocp_handler_->getSize(); t++)
+    {
+      std::map<std::string, Eigen::Vector3d> fref;
+      for (auto const & name : ee_names_)
+      {
+        fref[name] = Eigen::Vector3d::Zero();
+      }
+      forces_refs_.push_back(fref);
+    }
+
     velocity_base_.setZero();
     next_pose_.setZero();
     twist_vect_.setZero();
@@ -329,6 +341,26 @@ namespace simple_mpc
       ocp_handler_->setCoMref(t, com_refs_[t]);
       ocp_handler_->setMomentumRef(t, mom_refs_[t]);
     }
+
+    // seems good
+    // for (size_t t=0; t<ocp_handler_->getSize() - 1; t++)
+    // { 
+    //   if (forces_refs_.size() != ocp_handler_->getSize())
+    //   {
+    //     std::cout << "wrong size" << std::endl;
+    //   }
+    //   auto contact_state = ocp_handler_->getContactState(t);
+    //   int i=0;
+    //   for (const auto & [name, vec]: forces_refs_[t])
+    //   {
+    //     if (contact_state[t])
+    //     {
+    //       ocp_handler_->setReferenceForce(t, name, vec);
+    //     }
+    //     i++; 
+    //     // ocp_handler_->setReferenceForce(t, name, vec);
+    //   }
+    // }
   }
 
   void MPC::setReferencePose(const std::size_t t, const std::string & ee_name, const pinocchio::SE3 & pose_ref)

@@ -51,16 +51,18 @@ fref = np.zeros(force_size)
 fref[2] = -model_handler.getMass() / nk * gravity[2]
 u0 = np.zeros(model_handler.getModel().nv - 6)
 
+# full dynamics rcost weights
 w_basepos = [0, 0, 0, 0, 0, 0]
 w_legpos = [10, 10, 10]
 
 w_basevel = [10, 10, 10, 10, 10, 10]
 w_legvel = [0.1, 0.1, 0.1]
 w_x = np.array(w_basepos + w_legpos * 4 + w_basevel + w_legvel * 4)
-w_cent_lin = np.array([0.0, 0.0, 0])
-w_cent_ang = np.array([0, 0, 0])
-w_forces_lin = np.array([0.0001, 0.0001, 0.0001])
+w_cent_lin = np.array([0.001, 0.001, 1])
+w_cent_ang = np.array([0.0001, 0.0001, 0.001])
+w_forces_lin = np.array([0.00001, 0.00001, 0.0001])
 w_frame = np.eye(3)*1e3
+w_com_fd = np.diag(np.array([0.01, 0.01, 1]))
 
 dt = 0.01
 problem_conf = dict(
@@ -72,7 +74,7 @@ problem_conf = dict(
     force_size=3,
     w_forces=np.diag(w_forces_lin),
     w_frame=w_frame,
-    w_com = np.eye(3) * 1e3,
+    w_com = w_com_fd,
     umin=-model_handler.getModel().effortLimit[6:],
     umax=model_handler.getModel().effortLimit[6:],
     qmin=model_handler.getModel().lowerPositionLimit[7:],
@@ -151,7 +153,7 @@ possible_contacts = {"stand":contact_phase_quadru,
 
 c_phases = ["stand", "air", "stand"]
 
-timings = [50, 30, 50]
+timings = [50, 50, 50]
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -232,7 +234,7 @@ torques_before_qp = []
 
 com_c =  []
 com_fd = []
-comp_times = [60, 100, 110]
+comp_times = [] # [60, 100, 110]
 
 # vitesse du robot
 v = np.zeros(6)

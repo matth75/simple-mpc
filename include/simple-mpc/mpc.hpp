@@ -197,6 +197,7 @@ namespace simple_mpc
     VectorXd u0_;
     std::vector<Eigen::Vector3d> com_refs_;
     std::vector<Eigen::VectorXd> mom_refs_;
+    std::vector<std::map<std::string, Eigen::Vector3d>> forces_refs_;
   };
 
 } // namespace simple_mpc

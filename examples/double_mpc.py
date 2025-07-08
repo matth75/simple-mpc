@@ -22,6 +22,7 @@ import copy
 from ocp_centroidal.go2_utils import (create_contact_phases,
                                         plot_results,
                                         compare_predictions, 
+                                        compare_forces,
                                         global_comp_predictions,
                                         plot_forces)
 
@@ -66,7 +67,7 @@ w_legvel = [0.1, 0.1, 0.1]
 w_x = np.array(w_basepos + w_legpos * 4 + w_basevel + w_legvel * 4)
 w_cent_lin = np.array([0.001, 0.001, 1])
 w_cent_ang = np.array([0.0001, 0.0001, 0.001])
-w_forces_lin = np.array([0.0001, 0.0001, 0.0001])
+w_forces_lin = np.array([0.00001, 0.00001, 0.0001])
 w_frame = np.eye(3)*1e3
 w_com_fd = np.diag(np.array([0.01, 0.01, 1]))
 
@@ -216,7 +217,7 @@ mpc_fd = MPC(mpc_conf, fd_problem)
 # choose the phases of the motion
 c_phases = ["stand", "air", "stand"]
 
-timings = [T_fd, 35, 50]
+timings = [T_fd, 40, 50]
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -286,16 +287,28 @@ res_fd = np.array(res_fd)
 # plot_results(res_c)
 # plot_forces(np.array(mpc_centr.us))
 
+ee_names = ["FL_foot", "FR_foot", "RL_foot", "RR_foot"]
+f_refs = []
+f_dict = {"FL_foot":None, "FR_foot":None, "RL_foot":None, "RR_foot":None}
+
 """ Storing sim data """
 force_FL = []
 force_FR = []
 force_RL = []
 force_RR = []
 
-comp_times = []
+# v = np.zeros(6)
+# v[0] = 0.1
+# mpc_centr.velocity_base = v
+# mpc_fd.velocity_base = v
+
+
+comp_times = [ 90, 120]
 
 nsteps = 500    # length of simulation
 N_simu = 10     # nb of simulation steps between two OCP solves
+
+i = 0
 
 if True:
     for t in range(nsteps):
@@ -310,8 +323,18 @@ if True:
 
 
         # start = time.time()
+        f_refs = []
         mpc_centr.iterate(x_measured)
         results = np.array(mpc_centr.xs)
+        forces = np.array(mpc_centr.us)
+        # need a mise en forme des forces 
+        for i,f in enumerate(forces[:50]): 
+            # f = [int(_) for _ in f]
+            f0 = {"FL_foot":f[:3], "FR_foot":f[3:6], "RL_foot":f[6:9], "RR_foot":f[9:]}
+            mpc_fd.forcesReferences[i] = f0
+
+        
+
         com_predicted = results[:50,:3]
         mom_predicted = results[:50,3:]
 
@@ -359,6 +382,7 @@ if True:
             traj_fd = np.array(traj_fd)
 
             compare_predictions(np.array(mpc_centr.xs), traj_fd)
+            compare_forces(np.array(mpc_centr.us), np.array(forces_fd))
             # plot_forces(np.array(mpc_centr.us))
             # plot_forces(np.array(forces_fd))
 

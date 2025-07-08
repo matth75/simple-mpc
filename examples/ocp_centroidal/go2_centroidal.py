@@ -88,7 +88,6 @@ controlled_joints = ['root_joint', 'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_jo
 controlled_ids = [rmodel.getJointId(j) for j in controlled_joints[1:]]    # cant control root joint
 
 simu_step = 1e-3
-
 dt = 0.01   # 10 ms = temps de calcul d'ocp
 Nsimu = int(dt/simu_step)   # nombre de simulation entre deux résolutions d'ocp
 
@@ -102,11 +101,11 @@ possible_contacts = {"stand":[True, True, True, True],
                     }
 
 # contact phases and corresponding timings
-T_ss = 40   # for testing purposes
+T_ss = 100   # for testing purposes
 T_ds = 50
 
 # c_phases = ["stand", "FL_up", "air", "RL_up", "stand"]
-c_phases = ["stand", "air", "stand"]
+c_phases = ["stand", "FL_up", "stand"]
 
 # timings = [30, 10, 30, 2, 30]
 timings = [T_ds, T_ss, 70]
@@ -285,6 +284,11 @@ print(res)
 
 xs = np.array(res.xs)
 us = np.array(res.us)
+
+with open("examples/nparrays/optCentrTraj.npy", 'wb') as f:
+    np.save(f, xs)
+    np.save(f, us)
+
 
 go2.plot_results(xs, T_ds, T_ds + T_ss)
 # go2.plot_results(xs)

@@ -13,6 +13,7 @@
 #include <eigenpy/eigenpy.hpp>
 #include <eigenpy/std-unique-ptr.hpp>
 #include <eigenpy/std-vector.hpp>
+#include <eigenpy/std-map.hpp>
 
 #include "simple-mpc/mpc.hpp"
 #include "simple-mpc/ocp-handler.hpp"
@@ -24,6 +25,7 @@ namespace simple_mpc
   {
     namespace bp = boost::python;
     using eigenpy::StdVectorPythonVisitor;
+    using eigenpy::python::StdMapPythonVisitor;
 
     MPC * createMPC(const bp::dict & settings, std::shared_ptr<OCPHandler> problem)
     {
@@ -65,10 +67,16 @@ namespace simple_mpc
     {
       using StageVec = std::vector<std::shared_ptr<StageModel>>;
       using MapBool = std::map<std::string, bool>;
+      using MapVect = std::map<std::string, Eigen::Vector3d>;
+
       StdVectorPythonVisitor<StageVec, true>::expose(
         "StdVec_StageModel", eigenpy::details::overload_base_get_item_for_std_vector<StageVec>());
 
       StdVectorPythonVisitor<std::vector<MapBool>, true>::expose("StdVec_MapBool");
+
+      StdMapPythonVisitor<
+        std::string, Eigen::Vector3d, std::less<std::string>, std::allocator<std::pair<const std::string, Eigen::Vector3d>>, true>::expose("StdMapVec3d");
+      StdVectorPythonVisitor<std::vector<MapVect>, true>::expose("StdVec_MapVect3d");
 
       StdVectorPythonVisitor<std::vector<Eigen::Vector3d>, true>::expose("StdVec_EigVec3d");
 
@@ -85,6 +93,7 @@ namespace simple_mpc
         .def_readonly("ocp_handler", &MPC::ocp_handler_)
         .def_readwrite("setComReferences", &MPC::com_refs_)
         .def_readwrite("MomReferences", &MPC::mom_refs_)
+        .def_readwrite("forcesReferences", &MPC::forces_refs_)
         .def("switchToWalk", &MPC::switchToWalk, ("self"_a, "velocity_base"))
         .def("switchToStand", &MPC::switchToStand, "self"_a)
         .def("getFootTakeoffCycle", &MPC::getFootTakeoffCycle, ("self"_a, "ee_name"))

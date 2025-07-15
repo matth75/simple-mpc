@@ -68,7 +68,7 @@ w_x = np.array(w_basepos + w_legpos * 4 + w_basevel + w_legvel * 4)
 w_cent_lin = np.array([0.001, 0.001, 1])
 w_cent_ang = np.array([0.0001, 0.0001, 0.001])
 w_forces_lin = np.array([0.001, 0.001, 0.001])
-w_frame = np.eye(3)*1e3
+w_frame = np.diag([1,1,0.01])*1e3
 w_com_fd = np.diag(np.array([0.01, 0.01, 1]))
 
 dt = 0.01   # simulation timestep
@@ -139,7 +139,7 @@ problem_conf_fd = dict(
 )
 
 # length of the horizon (in simulation steps) for FD OCP
-T_fd = 50
+T_fd = 40
 
 fd_problem = FullDynamicsOCP(problem_conf_fd, model_handler)
 fd_problem.createProblem(model_handler.getReferenceState(), T_fd, force_size, gravity[2], False)
@@ -262,7 +262,7 @@ device.showQuadrupedFeet(*ref_foot_pose)
 # These states are there to guarantee that the cycling horizon is bigger than the main horizon (T_ctr)
 # This is done by creating T_ctr states at the beginning that are standing states.
 
-for t in range(T_fd):
+for t in range(T_fd + 20):
     mpc_centr.iterate(x_measured)
 
 # real simulation begins here
@@ -299,7 +299,7 @@ force_RR = []
 # mpc_fd.velocity_base = v
 
 
-comp_times = [50, 60] #45, 75, 85, 95 
+comp_times = [] #45, 75, 85, 95 
 
 nsteps = 500    # length of simulation
 N_simu = 10     # nb of simulation steps between two OCP solves
@@ -324,7 +324,7 @@ if True:
         results = np.array(mpc_centr.xs)
         forces = np.array(mpc_centr.us)
         # need a mise en forme des forces 
-        for i,f in enumerate(forces[:50]): 
+        for i,f in enumerate(forces[:T_fd]): 
             # f = [int(_) for _ in f]
             f0 = {"FL_foot":f[:3], "FR_foot":f[3:6], "RL_foot":f[6:9], "RR_foot":f[9:]}
             mpc_fd.forcesReferences[i] = f0

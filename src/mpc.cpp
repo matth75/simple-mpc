@@ -353,7 +353,7 @@ namespace simple_mpc
     //   int i=0;
     //   for (const auto & [name, vec]: forces_refs_[t])
     //   {
-    //     if (contact_state[t])
+    //     if (contact_state[i])
     //     {
     //       ocp_handler_->setReferenceForce(t, name, vec);
     //     }
@@ -361,6 +361,26 @@ namespace simple_mpc
     //     // ocp_handler_->setReferenceForce(t, name, vec);
     //   }
     // }
+
+    for (size_t t=0; t<ocp_handler_->getSize() - 1; t++)
+    { 
+      if (forces_refs_.size() != ocp_handler_->getSize())
+      {
+        std::cout << "wrong size" << std::endl;
+      }
+      auto contact_state = ocp_handler_->getContactState(t);
+      int i=0;
+      for (auto const & name: ee_names_)
+      {
+        if (contact_state[i])
+        {
+          ocp_handler_->setReferenceForce(t, name, forces_refs_[t].at(name));
+        }
+        i++; 
+        // ocp_handler_->setReferenceForce(t, name, vec);
+      }
+    }
+  
   }
 
   void MPC::setReferencePose(const std::size_t t, const std::string & ee_name, const pinocchio::SE3 & pose_ref)

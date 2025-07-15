@@ -36,7 +36,8 @@ namespace simple_mpc
     control_ref_.resize(nu_);
     control_ref_.setZero();
     com_ref_.setZero();
-    com_ref_[2] = 0.31; // pretty bad but should work
+    com_ref_[2] = 0.31638; // pretty bad but should work
+    com_ref_[0] = -0.04;
     x0_.resize(9);
   }
 

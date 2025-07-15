@@ -67,7 +67,7 @@ w_legvel = [0.1, 0.1, 0.1]
 w_x = np.array(w_basepos + w_legpos * 4 + w_basevel + w_legvel * 4)
 w_cent_lin = np.array([0.001, 0.001, 1])
 w_cent_ang = np.array([0.0001, 0.0001, 0.001])
-w_forces_lin = np.array([0.00001, 0.00001, 0.0001])
+w_forces_lin = np.array([0.001, 0.001, 0.001])
 w_frame = np.eye(3)*1e3
 w_com_fd = np.diag(np.array([0.01, 0.01, 1]))
 
@@ -151,7 +151,7 @@ w_control = np.array([   # 3D forces *4 legs = 12 = nu
     1,1,1
 ])
 w_control = np.diag(w_control) * 0.01
-w_com_centr = np.diag([0,0,1])    # no constraint on com right now
+w_com_centr = np.diag([100,0,1])    # no constraint on com right now
 w_lin = np.diag(np.array([0.01, 0.01, 1]))  
 w_ang = np.diag(np.array([0.01, 0.01, 1]))
 w_linear_acc = 0.01 * np.eye(3)
@@ -178,10 +178,6 @@ T_ctr = 100
 ctr_problem = CentroidalOCP(problem_conf_ctr, model_handler)
 ctr_problem.createProblem(data_handler.getCentroidalState(), T_ctr, force_size, gravity[2], True)
 
-# linear_mom = aligator.LinearMomentumResidual(9, 12, np.zeros(3))
-# term_stage_cstr = aligator.StageConstraint(linear_mom, aligator.constraints.EqualityConstraintSet())
-# ctr_problem.getProblem().addTerminalConstraint(term_stage)
-
 # useless ??
 T_ds = 20
 T_ss = 80
@@ -202,7 +198,7 @@ mpc_conf_ctr = dict(
     support_force=-model_handler.getMass() * gravity[2],
     TOL=1e-5,
     mu_init=1e-8,
-    max_iters=5,    # interesting
+    max_iters=2,    # interesting
     num_threads=1,
     swing_apex=0.15,
     T_fly=T_ss,
@@ -244,7 +240,7 @@ device.initializeJoints(model_handler.getReferenceState()[:nq])
 for i in range(40):
     device.setFrictionCoefficients(i, 10, 0)
 
-device.changeCamera(1.0, 60, -15, [0.6, -0.5, 0.5])
+device.changeCamera(1.0, 0, -15, [0, -0.5, 0.5])
 
 
 """ Interpolation """
@@ -303,7 +299,7 @@ force_RR = []
 # mpc_fd.velocity_base = v
 
 
-comp_times = [ 90, 120]
+comp_times = [50, 60] #45, 75, 85, 95 
 
 nsteps = 500    # length of simulation
 N_simu = 10     # nb of simulation steps between two OCP solves

@@ -14,6 +14,14 @@ from aligator import (manifolds,
 
 import example_robot_data as erd
 
+import sys
+
+# -------- set to False to use zmin_plot script ------
+
+localuse = True
+
+# ---------------------------------------
+
 robot = erd.load("go2")
 
 URDF_FILENAME = "go2.urdf"
@@ -56,7 +64,7 @@ space = manifolds.VectorSpace(nx)
 space_multibody = manifolds.MultibodyPhaseSpace(rmodel)     # used for init of com
 
 x0 = space.neutral()
-print(x0)
+# print(x0)
 u0 = np.zeros(nu)   # warm start
 
 # update com position
@@ -64,8 +72,10 @@ pin.forwardKinematics(rmodel, rdata, q0)
 pin.updateFramePlacements(rmodel, rdata)
 com0 = pin.centerOfMass(rmodel, rdata, q0)
 x0[:3] = com0.copy()
-
+# x0[0] -= 0.02
 # go2.plot_com_3d(np.array(com0), show_plot=True)
+
+print(com0)
 
 # create OCP problem
 gravity = np.array([0, 0, -9.81])
@@ -101,14 +111,17 @@ possible_contacts = {"stand":[True, True, True, True],
                     }
 
 # contact phases and corresponding timings
-T_ss = 100   # for testing purposes
+if localuse:
+    T_ss = 47   # for testing purposes
+else:
+    T_ss = int(sys.argv[1])
 T_ds = 50
 
 # c_phases = ["stand", "FL_up", "air", "RL_up", "stand"]
-c_phases = ["stand", "FL_up", "stand"]
+c_phases = ["stand", "air", "stand"]
 
 # timings = [30, 10, 30, 2, 30]
-timings = [T_ds, T_ss, 70]
+timings = [T_ds, T_ss, 20]
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -257,7 +270,7 @@ mu_init = 1e-8
 
 max_iters = 50  # easy move, should not take too many iterations
 verbose = aligator.VerboseLevel.VERBOSE
-solver = aligator.SolverProxDDP(TOL, mu_init, verbose=verbose)
+solver = aligator.SolverProxDDP(TOL, mu_init)
 #solver = aligator.SolverFDDP(TOL, verbose=verbose)
 solver.rollout_type = aligator.ROLLOUT_LINEAR
 #print("LDLT algo choice:", solver.ldlt_algo_choice)
@@ -280,16 +293,24 @@ solver.run(
 )
 
 res = solver.results
-print(res)
 
 xs = np.array(res.xs)
 us = np.array(res.us)
 
-with open("examples/nparrays/optCentrTraj.npy", 'wb') as f:
-    np.save(f, xs)
-    np.save(f, us)
+# with open("examples/nparrays/optCentrTraj.npy", 'wbx') as f:
+#     np.save(f, xs)
+#     np.save(f, us)
 
+if localuse:
+    print(res)
+    print(us[20])
 
-go2.plot_results(xs, T_ds, T_ds + T_ss)
+    print(us[T_ds - 1])
+    go2.plot_results(xs, T_ds, T_ds + T_ss)
+    go2.plot_forces(np.array(res.us), 10, T_ds - 1)
+
+    
 # go2.plot_results(xs)
-go2.plot_forces(np.array(res.us))
+
+
+print(np.min(xs[:,2]))

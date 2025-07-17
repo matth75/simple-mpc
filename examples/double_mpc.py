@@ -139,7 +139,10 @@ problem_conf_fd = dict(
 )
 
 # length of the horizon (in simulation steps) for FD OCP
-T_fd = 50
+T_fd = 25
+
+T_ds = 50
+T_ss = 30
 
 fd_problem = FullDynamicsOCP(problem_conf_fd, model_handler)
 fd_problem.createProblem(model_handler.getReferenceState(), T_fd, force_size, gravity[2], False)
@@ -178,9 +181,9 @@ T_ctr = 100
 ctr_problem = CentroidalOCP(problem_conf_ctr, model_handler)
 ctr_problem.createProblem(data_handler.getCentroidalState(), T_ctr, force_size, gravity[2], True)
 
-# useless ??
-T_ds = 20
-T_ss = 80
+# # useless ??
+# T_ds = 20
+# T_ss = 80
 
 mpc_conf = dict(
     support_force=-model_handler.getMass() * gravity[2],
@@ -188,7 +191,7 @@ mpc_conf = dict(
     mu_init=1e-8,
     max_iters=1,
     num_threads=1,
-    swing_apex=0.25,
+    swing_apex=0.4,
     T_fly=T_ss,
     T_contact=T_ds,
     timestep=problem_conf_ctr["timestep"],
@@ -200,7 +203,7 @@ mpc_conf_ctr = dict(
     mu_init=1e-8,
     max_iters=2,    # interesting
     num_threads=1,
-    swing_apex=0.25,
+    swing_apex=0.4,
     T_fly=T_ss,
     T_contact=T_ds,
     timestep=problem_conf_ctr["timestep"],
@@ -211,9 +214,9 @@ mpc_fd = MPC(mpc_conf, fd_problem)
 
 
 # choose the phases of the motion
-c_phases = ["stand", "FL_up", "air", "FL_up", "stand"]
+c_phases = ["stand", "air",  "stand"]
 
-timings = [T_fd, 10, 45, 10, 50]
+timings = [T_fd, T_ss, 50]
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -293,11 +296,11 @@ force_FR = []
 force_RL = []
 force_RR = []
 
-v = np.zeros(6)
-v[0] = 0.3
-v[4] = 0.2
-mpc_centr.velocity_base = v
-mpc_fd.velocity_base = v
+# v = np.zeros(6)
+# v[0] = 0.3
+# v[4] = 0.2
+# mpc_centr.velocity_base = v
+# mpc_fd.velocity_base = v
 
 
 comp_times = [] #45, 75, 85, 95 
@@ -314,10 +317,10 @@ if True:
     for t in range(nsteps):
         print("Time " + str(t))
 
-        if t>20 and first==False:
-            mpc_centr.velocity_base = v
-            mpc_fd.velocity_base = v
-            first=True
+        # if t>20 and first==False:
+        #     mpc_centr.velocity_base = v
+        #     mpc_fd.velocity_base = v
+        #     first=True
 
         device.moveQuadrupedFeet(
             mpc_fd.getReferencePose(0, "FL_foot").translation,

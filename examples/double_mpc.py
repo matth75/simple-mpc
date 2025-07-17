@@ -139,7 +139,7 @@ problem_conf_fd = dict(
 )
 
 # length of the horizon (in simulation steps) for FD OCP
-T_fd = 50
+T_fd = 20
 
 fd_problem = FullDynamicsOCP(problem_conf_fd, model_handler)
 fd_problem.createProblem(model_handler.getReferenceState(), T_fd, force_size, gravity[2], False)
@@ -213,7 +213,7 @@ mpc_fd = MPC(mpc_conf, fd_problem)
 # choose the phases of the motion
 c_phases = ["stand", "air", "stand"]
 
-timings = [T_fd, 47, 50]
+timings = [T_fd, 30, 50]
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -301,7 +301,7 @@ force_RR = []
 
 comp_times = [] #45, 75, 85, 95 
 
-nsteps = 500    # length of simulation
+nsteps = 200    # length of simulation
 N_simu = 10     # nb of simulation steps between two OCP solves
 
 i = 0
@@ -321,7 +321,7 @@ if True:
         )
 
         # measure time of mpc solve
-        start = time.time()
+        
 
         f_refs = []
         mpc_centr.iterate(x_measured)
@@ -341,6 +341,8 @@ if True:
         mpc_fd.MomReferences = list(mom_predicted)
         mpc_fd.setComReferences = list(com_predicted)
         
+        start = time.time()
+
         mpc_fd.iterate(x_measured)
 
         end = time.time()
@@ -414,6 +416,6 @@ if True:
             device.execute(current_torque)
 
 
-
+print(sum(solve_time)/len(solve_time))
 
 

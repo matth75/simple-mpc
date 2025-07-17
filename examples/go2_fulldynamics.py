@@ -89,7 +89,7 @@ problem_conf = dict(
     force_cone=False,
     land_cstr=True
 )
-T = 50
+T = 20
 
 dynproblem = FullDynamicsOCP(problem_conf, model_handler)
 dynproblem.createProblem(model_handler.getReferenceState(), T, force_size, gravity[2], False)
@@ -97,14 +97,14 @@ dynproblem.createProblem(model_handler.getReferenceState(), T, force_size, gravi
 T_ds = 50
 T_lift = 20
 T_land = 2
-T_ss = 30
+T_ss = 15
 N_simu = int(0.01 / 0.001)
 mpc_conf = dict(
     support_force=-model_handler.getMass() * gravity[2],
     TOL=1e-4,
     mu_init=1e-8,
     max_iters=1,
-    num_threads=8,
+    num_threads=1,
     swing_apex=0.15, 
     T_fly=T_ss,
     T_contact=T_ds,
@@ -153,7 +153,7 @@ possible_contacts = {"stand":contact_phase_quadru,
 
 c_phases = ["stand", "air", "stand"]
 
-timings = [50, 40, 50]
+timings = [50, 30, 50]
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts

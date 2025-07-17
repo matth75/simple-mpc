@@ -105,7 +105,7 @@ mpc_conf = dict(
     mu_init=1e-8,
     max_iters=1,
     num_threads=8,
-    swing_apex=0.2, 
+    swing_apex=0.15, 
     T_fly=T_ss,
     T_contact=T_ds,
     timestep=dt,
@@ -153,7 +153,7 @@ possible_contacts = {"stand":contact_phase_quadru,
 
 c_phases = ["stand", "air", "stand"]
 
-timings = [50, 50, 50]
+timings = [50, 40, 50]
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -200,6 +200,8 @@ device.initializeJoints(model_handler.getReferenceState()[:nq])
 for i in range(40):
     device.setFrictionCoefficients(i, 10, 0)
 # device.changeCamera(1.0, 60, -15, [0.6, -0.2, 0.5])
+
+device.changeCamera(1.0, 0, -15, [0, -0.5, 0.5])
 
 q_meas, v_meas = device.measureState()
 x_measured  = np.concatenate([q_meas, v_meas])
@@ -297,50 +299,35 @@ for t in range(n_steps):
     xss = [mpc.xs[0], mpc.xs[1]]
     uss = [mpc.us[0], mpc.us[1]]
 
-    FL_measured.append(mpc.getDataHandler().getFootPose("FL_foot").translation)
-    FR_measured.append(mpc.getDataHandler().getFootPose("FR_foot").translation)
-    RL_measured.append(mpc.getDataHandler().getFootPose("RL_foot").translation)
-    RR_measured.append(mpc.getDataHandler().getFootPose("RR_foot").translation)
-    FL_references.append(mpc.getReferencePose(0, "FL_foot").translation)
-    FR_references.append(mpc.getReferencePose(0, "FR_foot").translation)
-    RL_references.append(mpc.getReferencePose(0, "RL_foot").translation)
-    RR_references.append(mpc.getReferencePose(0, "RR_foot").translation)
-    com_measured.append(mpc.getDataHandler().getData().com[0].copy())
-    L_measured.append(mpc.getDataHandler().getData().hg.angular.copy())
+    # FL_measured.append(mpc.getDataHandler().getFootPose("FL_foot").translation)
+    # FR_measured.append(mpc.getDataHandler().getFootPose("FR_foot").translation)
+    # RL_measured.append(mpc.getDataHandler().getFootPose("RL_foot").translation)
+    # RR_measured.append(mpc.getDataHandler().getFootPose("RR_foot").translation)
+    # FL_references.append(mpc.getReferencePose(0, "FL_foot").translation)
+    # FR_references.append(mpc.getReferencePose(0, "FR_foot").translation)
+    # RL_references.append(mpc.getReferencePose(0, "RL_foot").translation)
+    # RR_references.append(mpc.getReferencePose(0, "RR_foot").translation)
+    # com_measured.append(mpc.getDataHandler().getData().com[0].copy())
+    # L_measured.append(mpc.getDataHandler().getData().hg.angular.copy())
 
 
     if t in comp_times: # beginning of the jump : first [False, False, False ,False]
         contact_states = mpc.ocp_handler.getContactState(0)
-        print(list(contact_states))
-        x = mpc.xs[0]
+        # x = mpc_fd.xs[0]
+        print(mpc.solver.results)
+        # data_handler.updateInternalData(x, False)
+        # x_centr = data_handler.getCentroidalState()
 
-        data_handler.updateInternalData(x, False)
-        x_centr = data_handler.getCentroidalState()
-
-
-        res = go2centr.runOCP(x_centr, contact_phasesOCP[t - 49:])
-
-        # mpc.xs[0] = current state, mpc.xs[>0] = prediction (T = 50 steps of prediction)
-        traj_mpc = []
+        traj_fd = []
         forces_fd = []
         for s in range(T):  # len(mpc.xs) = 51, T = 50
-            x = mpc.xs[s]
-            u = mpc.us[s]
-            data_handler.updateInternalData(x, False)
-            traj_mpc.append(data_handler.getCentroidalState())
+            x_fd = mpc.xs[s]
+            data_handler.updateInternalData(x_fd, False)
+            traj_fd.append(data_handler.getCentroidalState())
             forces_fd.append(mpc.getContactForces(s))
 
-        traj_mpc = np.array(traj_mpc)
-
-        com_c.append(np.array(res.xs))
-        com_fd.append(traj_mpc)
-
-        compare_predictions(np.array(res.xs), traj_mpc)
-        plot_forces(np.array(res.us))
-        plot_forces(np.array(forces_fd))
-        # plot_results(traj_mpc)
-        # plot_results(np.array(res.xs))
-
+        traj_fd = np.array(traj_fd)
+        plot_results(traj_fd)
 
 
     for j in range(N_simu):
@@ -349,8 +336,8 @@ for t in range(n_steps):
 
         x_interp = interpolator.interpolateState(delay, dt, xss)
         u_interp = interpolator.interpolateLinear(delay, dt, uss)
-        acc_interp = interpolator.interpolateLinear(delay, dt, ddqs)
-        force_interp = interpolator.interpolateLinear(delay, dt, forces)
+        # acc_interp = interpolator.interpolateLinear(delay, dt, ddqs)
+        # force_interp = interpolator.interpolateLinear(delay, dt, forces)
 
         q_meas, v_meas = device.measureState()
         x_measured = np.concatenate([q_meas, v_meas])
@@ -361,29 +348,29 @@ for t in range(n_steps):
             x_measured, x_interp
         )
 
-        qp.solveQP(
-            mpc.getDataHandler().getData(),
-            contact_states,
-            x_measured[nq:],
-            acc_interp,
-            current_torque,
-            force_interp,
-            mpc.getDataHandler().getData().M,
-        )
+        # qp.solveQP(
+        #     mpc.getDataHandler().getData(),
+        #     contact_states,
+        #     x_measured[nq:],
+        #     acc_interp,
+        #     current_torque,
+        #     force_interp,
+        #     mpc.getDataHandler().getData().M,
+        # )
 
-        torques_before_qp.append(current_torque)
+        # torques_before_qp.append(current_torque)
 
         # actually useless
-        qp_torque = qp.solved_torque.copy()
+        # qp_torque = qp.solved_torque.copy()
 
-        torques.append(qp_torque)
+        # torques.append(qp_torque)
 
         # not needed, just need some right Ricatti gains
-        friction_torque = fcompensation.computeFriction(x_interp[nq + 6:], qp_torque)
-        device.execute(friction_torque)
+        # friction_torque = fcompensation.computeFriction(x_interp[nq + 6:], qp_torque)
+        device.execute(current_torque)
 
-        u_multibody.append(copy.deepcopy(current_torque))
-        x_multibody.append(x_measured)
+        # u_multibody.append(copy.deepcopy(current_torque))
+        # x_multibody.append(x_measured)
 
 # global_comp_predictions(np.array(com_c), np.array(com_fd), comp_times, True, "mult_comp_predictions")
 
@@ -453,3 +440,5 @@ tau2 = np.array([t[0] for t in torques_before_qp])
 """ save_trajectory(x_multibody, u_multibody, com_measured, force_FL, force_FR, force_RL, force_RR, solve_time,
                 FL_measured, FR_measured, RL_measured, RR_measured,
                 FL_references, FR_references, RL_references, RR_references, L_measured, "fulldynamics") """
+
+print(sum(solve_time)/len(solve_time))

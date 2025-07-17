@@ -139,7 +139,7 @@ problem_conf_fd = dict(
 )
 
 # length of the horizon (in simulation steps) for FD OCP
-T_fd = 40
+T_fd = 50
 
 fd_problem = FullDynamicsOCP(problem_conf_fd, model_handler)
 fd_problem.createProblem(model_handler.getReferenceState(), T_fd, force_size, gravity[2], False)
@@ -213,7 +213,7 @@ mpc_fd = MPC(mpc_conf, fd_problem)
 # choose the phases of the motion
 c_phases = ["stand", "air", "stand"]
 
-timings = [T_fd, 40, 50]
+timings = [T_fd, 47, 50]
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -262,7 +262,7 @@ device.showQuadrupedFeet(*ref_foot_pose)
 # These states are there to guarantee that the cycling horizon is bigger than the main horizon (T_ctr)
 # This is done by creating T_ctr states at the beginning that are standing states.
 
-for t in range(T_fd + 20):
+for t in range(T_fd + (50 - T_fd)*2):   # alignement du mpc_centr et mpc_fd
     mpc_centr.iterate(x_measured)
 
 # real simulation begins here
@@ -306,6 +306,9 @@ N_simu = 10     # nb of simulation steps between two OCP solves
 
 i = 0
 
+solve_time = []
+
+
 if True:
     for t in range(nsteps):
         print("Time " + str(t))
@@ -317,8 +320,9 @@ if True:
             mpc_fd.getReferencePose(0, "RR_foot").translation,
         )
 
+        # measure time of mpc solve
+        start = time.time()
 
-        # start = time.time()
         f_refs = []
         mpc_centr.iterate(x_measured)
         results = np.array(mpc_centr.xs)
@@ -339,8 +343,10 @@ if True:
         
         mpc_fd.iterate(x_measured)
 
+        end = time.time()
+
         # end = time.time()
-        # solve_time.append(end - start)
+        solve_time.append(end - start)
 
         a0 = mpc_fd.getStateDerivative(0)[nv:]
         a1 = mpc_fd.getStateDerivative(1)[nv:]

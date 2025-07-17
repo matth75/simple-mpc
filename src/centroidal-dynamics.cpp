@@ -128,8 +128,8 @@ namespace simple_mpc
       stm.addConstraint(com_slice, NegativeOrthant());
     }
     // add box constraint to forces z component 
-     Eigen::VectorXd umin = Eigen::VectorXd::Zero(12);
-     Eigen::VectorXd umax {{0.0, 0.0, 250.0, 0.0, 0.0, 250.0, 0.0, 0.0, 250.0, 0.0, 0.0, 250.0}};
+     Eigen::VectorXd umin {{-20.0, -20.0, 0.0, -20.0, -20.0, 0.0, -20.0, -20.0, 0.0, -20.0, -20.0, 0.0}};
+     Eigen::VectorXd umax {{30.0, 30.0, 270.0, 30.0, 30.0, 270.0, 30.0, 30.0, 270.0, 30.0, 30.0, 270.0}};
      auto forces_cstr = ControlErrorResidual(nx_, nu_);
      stm.addConstraint(forces_cstr, BoxConstraint(umin, umax));
     return stm;

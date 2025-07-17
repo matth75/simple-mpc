@@ -44,3 +44,5 @@ build*/
 examples/ocp_centroidal/__pycache__/go2_utils.cpython-311.pyc
 examples/ocp_centroidal/__pycache__/go2_utils.cpython-311.pyc
 examples/ocp_centroidal/__pycache__/go2centrOPC.cpython-311.pyc
+examples/qptorques.npy
+examples/qptorques.npy

@@ -139,7 +139,7 @@ problem_conf_fd = dict(
 )
 
 # length of the horizon (in simulation steps) for FD OCP
-T_fd = 20
+T_fd = 50
 
 fd_problem = FullDynamicsOCP(problem_conf_fd, model_handler)
 fd_problem.createProblem(model_handler.getReferenceState(), T_fd, force_size, gravity[2], False)
@@ -151,7 +151,7 @@ w_control = np.array([   # 3D forces *4 legs = 12 = nu
     1,1,1
 ])
 w_control = np.diag(w_control) * 0.01
-w_com_centr = np.diag([100,0,1])    # no constraint on com right now
+w_com_centr = np.diag([0.1,0,1])    # no constraint on com right now
 w_lin = np.diag(np.array([0.01, 0.01, 1]))  
 w_ang = np.diag(np.array([0.01, 0.01, 1]))
 w_linear_acc = 0.01 * np.eye(3)
@@ -188,7 +188,7 @@ mpc_conf = dict(
     mu_init=1e-8,
     max_iters=1,
     num_threads=1,
-    swing_apex=0.15,
+    swing_apex=0.25,
     T_fly=T_ss,
     T_contact=T_ds,
     timestep=problem_conf_ctr["timestep"],
@@ -200,7 +200,7 @@ mpc_conf_ctr = dict(
     mu_init=1e-8,
     max_iters=2,    # interesting
     num_threads=1,
-    swing_apex=0.15,
+    swing_apex=0.25,
     T_fly=T_ss,
     T_contact=T_ds,
     timestep=problem_conf_ctr["timestep"],
@@ -211,9 +211,9 @@ mpc_fd = MPC(mpc_conf, fd_problem)
 
 
 # choose the phases of the motion
-c_phases = ["stand", "air", "stand"]
+c_phases = ["stand", "FL_up", "air", "FL_up", "stand"]
 
-timings = [T_fd, 30, 50]
+timings = [T_fd, 10, 45, 10, 50]
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -293,25 +293,31 @@ force_FR = []
 force_RL = []
 force_RR = []
 
-# v = np.zeros(6)
-# v[0] = 0.1
-# mpc_centr.velocity_base = v
-# mpc_fd.velocity_base = v
+v = np.zeros(6)
+v[0] = 0.3
+v[4] = 0.2
+mpc_centr.velocity_base = v
+mpc_fd.velocity_base = v
 
 
 comp_times = [] #45, 75, 85, 95 
 
-nsteps = 200    # length of simulation
+nsteps = 500    # length of simulation
 N_simu = 10     # nb of simulation steps between two OCP solves
 
 i = 0
 
 solve_time = []
-
+first=False
 
 if True:
     for t in range(nsteps):
         print("Time " + str(t))
+
+        if t>20 and first==False:
+            mpc_centr.velocity_base = v
+            mpc_fd.velocity_base = v
+            first=True
 
         device.moveQuadrupedFeet(
             mpc_fd.getReferencePose(0, "FL_foot").translation,
@@ -321,7 +327,7 @@ if True:
         )
 
         # measure time of mpc solve
-        
+        start = time.time()
 
         f_refs = []
         mpc_centr.iterate(x_measured)
@@ -341,7 +347,7 @@ if True:
         mpc_fd.MomReferences = list(mom_predicted)
         mpc_fd.setComReferences = list(com_predicted)
         
-        start = time.time()
+        
 
         mpc_fd.iterate(x_measured)
 

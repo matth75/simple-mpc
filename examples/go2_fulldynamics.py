@@ -89,7 +89,7 @@ problem_conf = dict(
     force_cone=False,
     land_cstr=True
 )
-T = 20
+T = 50
 
 dynproblem = FullDynamicsOCP(problem_conf, model_handler)
 dynproblem.createProblem(model_handler.getReferenceState(), T, force_size, gravity[2], False)
@@ -97,7 +97,7 @@ dynproblem.createProblem(model_handler.getReferenceState(), T, force_size, gravi
 T_ds = 50
 T_lift = 20
 T_land = 2
-T_ss = 15
+T_ss = 30
 N_simu = int(0.01 / 0.001)
 mpc_conf = dict(
     support_force=-model_handler.getMass() * gravity[2],

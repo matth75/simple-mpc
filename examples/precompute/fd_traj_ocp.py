@@ -41,9 +41,13 @@ FOOT_JOINT_IDS = {
 print(FOOT_JOINT_IDS)
 
 umax = rmodel.effortLimit[6:]
-for i in range(len(umax)):
-    umax[i] -= 5
+# for i in range(len(umax)):
+#     umax[i] -= 5
 
+umax[2] -= 5
+umax[5] -= 5
+umax[8] -= 5
+umax[11] -= 5
 umin = - umax
 
 
@@ -60,13 +64,17 @@ for fname, fid in FOOT_FRAME_IDS.items():
         pl1,
         0,
         pl2,
-        pin.LOCAL_WORLD_ALIGNED,
+        pin.LOCAL_WORLD_ALIGNED
     )
     cm.corrector.Kp[:] = (0, 0, 100)
     cm.corrector.Kd[:] = (50, 50, 50)
     constraint_models.append(cm)
     constraint_datas.append(cm.createData())
 
+constraint_models[0].name = "FL_foot"
+constraint_models[1].name = "FR_foot"
+constraint_models[2].name = "RL_foot"
+constraint_models[3].name = "RR_foot"
 
 FL_id = rmodel.getFrameId("FL_foot")
 FR_id = rmodel.getFrameId("FR_foot")
@@ -192,6 +200,7 @@ frame_fn_RR = aligator.FramePlacementResidual(
 
 T_ds = 50
 T_ss = 50
+T_fd = 50   # horizon utilisé par le MPC, permet d'ajuster la durée de la 1ere phase de contact
 
 #############################
 
@@ -203,10 +212,10 @@ possible_contacts = {"stand":[True, True, True, True],
                     }
 
 
-c_phases = ["stand", "air", "stand"]
+c_phases = ["stand", "air", "stand", "air"] 
 
 
-timings = [T_ds, T_ss, T_ds]
+timings = [T_fd + T_ds, T_ss, T_ds * 2] 
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -252,8 +261,19 @@ def createStage(contact, i):
     ctrl_fn = aligator.ControlErrorResidual(space.ndx, np.zeros(nu))
     stm.addConstraint(ctrl_fn, constraints.BoxConstraint(umin, umax))
 
+    # if contact == possible_contacts["stand"]:
+    #     ctrl_FL = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "FL_foot", 0.8)
+    #     ctrl_FR = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "FR_foot", 0.8)
+    #     ctrl_RL = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "RL_foot", 0.8)
+    #     ctrl_RR = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "RR_foot", 0.8)
+    #     stm.addConstraint(ctrl_FL, constraints.NegativeOrthant())
+    #     stm.addConstraint(ctrl_FR, constraints.NegativeOrthant())
+    #     stm.addConstraint(ctrl_RL, constraints.NegativeOrthant())
+    #     stm.addConstraint(ctrl_RR, constraints.NegativeOrthant())
+    # stm.addConstraint(,constraints.)
+
     # on landing, feet velocities = 0
-    if i == T_ds + T_ss:
+    if i == T_fd + T_ds + T_ss:
         stm.addConstraint(frame_vel_FL, constraints.EqualityConstraintSet())
         stm.addConstraint(frame_vel_FR, constraints.EqualityConstraintSet())
         stm.addConstraint(frame_vel_RL, constraints.EqualityConstraintSet())
@@ -301,7 +321,21 @@ conv = solver.run(problem, xs_init, us_init)
 res = solver.results
 print(res)
 
-plot_torques(np.array(res.us))
+forces = np.zeros((T_mpc,12))   # 12 linear forces on each leg
+
+for i in range(T_mpc):
+    if i not in range(T_fd + T_ds,T_fd + T_ds + T_ss):
+        forces[i,:3] = solver.workspace.problem_data.stage_data[i].dynamics_data.continuous_data.constraint_datas[0].contact_force.linear
+        forces[i,3:6] = solver.workspace.problem_data.stage_data[i].dynamics_data.continuous_data.constraint_datas[1].contact_force.linear
+        forces[i,6:9] = solver.workspace.problem_data.stage_data[i].dynamics_data.continuous_data.constraint_datas[2].contact_force.linear
+        forces[i,9:12] = solver.workspace.problem_data.stage_data[i].dynamics_data.continuous_data.constraint_datas[3].contact_force.linear
+
+with open("fd_traj.npy", "wb") as f:
+    np.save(f, np.array(res.xs))
+    np.save(f, np.array(res.us))
+    np.save(f, forces)
+
+# plot_torques(np.array(res.us))
 
 def play_results():
     viz = meshviz(rmodel, robot.collision_model, robot.visual_model)

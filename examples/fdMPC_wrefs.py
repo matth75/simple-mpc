@@ -53,8 +53,8 @@ w_legvel = [0.1, 0.1, 0.1]
 w_x = np.array(w_basepos + w_legpos * 4 + w_basevel + w_legvel * 4)
 w_cent_lin = np.array([0.0, 0.0, 0])
 w_cent_ang = np.array([0, 0, 0])
-w_forces_lin = np.array([0.0001, 0.0001, 0.0001]) * 0
-w_frame = np.eye(3)*1
+w_forces_lin = np.array([0.000, 0.000, 0.0001]) *0.0
+w_frame = np.eye(3)*0.1
 
 dt = 0.01
 problem_conf = dict(
@@ -80,19 +80,26 @@ problem_conf = dict(
     force_cone=False,
     land_cstr=True
 )
-T = 55
+T = 50
 
 dynproblem = FullDynamicsOCP(problem_conf, model_handler)
 dynproblem.createProblem(model_handler.getReferenceState(), T, force_size, gravity[2], False)
 
 ##########################
 T_ds = 50
-T_ss = 55
+T_ss = 50
 
 
-with open ("fd_traj.npy", "rb") as f:
-    xref = np.load(f)
-    uref = np.load(f)
+data = np.load("fd_trajs_from_ocp.npz")
+
+xref = data["xs"]
+uref = data["us"]
+fref = data["forces"]
+
+# unreliable
+# with open ("fd_traj.npy", "rb") as f:
+#     xref = np.load(f)
+#     uref = np.load(f)
 
 ##########################
 
@@ -194,7 +201,7 @@ device.initializeJoints(model_handler.getReferenceState()[:nq])
 
 for i in range(40):
     device.setFrictionCoefficients(i, 10, 0)
-#device.changeCamera(1.0, 60, -15, [0.6, -0.2, 0.5])
+device.changeCamera(1.0, 10, 0, [0.1, -0.3, 0.5])
 
 q_meas, v_meas = device.measureState()
 x_measured  = np.concatenate([q_meas, v_meas])
@@ -235,7 +242,7 @@ mpc.velocity_base = v
 # number of simulation steps
 n_steps = 200
 
-comp_times = [160]
+comp_times = []
 
 for t in range(n_steps):
     print("Time " + str(t))
@@ -256,6 +263,10 @@ for t in range(n_steps):
     for i in range(T):  # with T the length of the MPC horizon
         mpc.ocp_handler.setReferenceState(i, xref[t+i])
         mpc.ocp_handler.setReferenceControl(i, uref[t+i])
+
+    for i,f in enumerate(fref[t:T+t]): 
+        f0 = {"FL_foot":f[:3], "FR_foot":f[3:6], "RL_foot":f[6:9], "RR_foot":f[9:]}
+        mpc.forcesReferences[i] = f0
 
     start = time.time()
     mpc.iterate(x_measured)

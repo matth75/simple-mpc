@@ -66,3 +66,6 @@ def plot_forces(f:np.array, T_0:int, T_ds:int, show_plot:bool=True, save_png:str
                   
     if show_plot:
         plt.show()
+
+
+#TODO: Generate cycle horizon from data !!

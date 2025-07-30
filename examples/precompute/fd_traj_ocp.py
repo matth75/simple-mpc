@@ -44,10 +44,14 @@ umax = rmodel.effortLimit[6:]
 # for i in range(len(umax)):
 #     umax[i] -= 5
 
-umax[2] -= 5
-umax[5] -= 5
-umax[8] -= 5
-umax[11] -= 5
+# -5 N.m for each of the strongest motors
+r = 5
+
+idxs = [2, 5, 8, 11]
+
+for i in idxs:
+    umax[i] -= r
+
 umin = - umax
 
 
@@ -199,7 +203,7 @@ frame_fn_RR = aligator.FramePlacementResidual(
 #############################
 
 T_ds = 50
-T_ss = 50
+T_ss = 30
 T_fd = 50   # horizon utilisé par le MPC, permet d'ajuster la durée de la 1ere phase de contact
 
 #############################
@@ -212,7 +216,7 @@ possible_contacts = {"stand":[True, True, True, True],
                     }
 
 
-c_phases = ["stand", "air", "stand", "air"] 
+c_phases = ["stand", "air", "stand"] 
 
 
 timings = [T_fd + T_ds, T_ss, T_ds * 2] 
@@ -258,18 +262,24 @@ def createStage(contact, i):
 
     # add box constraints for forces
     # stm.addConstraint()
+    # add constraint on com height before takeoff
+    ctrl_com = aligator.CentroidalCoMResidual(space.ndx, nu, np.array([0.0, 0.0, -0.04]) + com0)
+    ctrl_com = aligator.LinearFunctionComposition(ctrl_com, -np.eye(3))
+    if (i==T_ds + T_fd - 10)  or (i==T_ds + T_fd + T_ss + 5):
+        stm.addConstraint(ctrl_com, constraints.NegativeOrthant())
+
     ctrl_fn = aligator.ControlErrorResidual(space.ndx, np.zeros(nu))
     stm.addConstraint(ctrl_fn, constraints.BoxConstraint(umin, umax))
 
-    # if contact == possible_contacts["stand"]:
-    #     ctrl_FL = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "FL_foot", 0.8)
-    #     ctrl_FR = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "FR_foot", 0.8)
-    #     ctrl_RL = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "RL_foot", 0.8)
-    #     ctrl_RR = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "RR_foot", 0.8)
-    #     stm.addConstraint(ctrl_FL, constraints.NegativeOrthant())
-    #     stm.addConstraint(ctrl_FR, constraints.NegativeOrthant())
-    #     stm.addConstraint(ctrl_RL, constraints.NegativeOrthant())
-    #     stm.addConstraint(ctrl_RR, constraints.NegativeOrthant())
+    if contact == possible_contacts["stand"]:
+        ctrl_FL = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "FL_foot", 0.8)
+        ctrl_FR = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "FR_foot", 0.8)
+        ctrl_RL = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "RL_foot", 0.8)
+        ctrl_RR = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "RR_foot", 0.8)
+        stm.addConstraint(ctrl_FL, constraints.NegativeOrthant())
+        stm.addConstraint(ctrl_FR, constraints.NegativeOrthant())
+        stm.addConstraint(ctrl_RL, constraints.NegativeOrthant())
+        stm.addConstraint(ctrl_RR, constraints.NegativeOrthant())
     # stm.addConstraint(,constraints.)
 
     # on landing, feet velocities = 0
@@ -304,7 +314,7 @@ problem.addTerminalConstraint(term_stage_cstr)
 
 TOL = 1e-2
 mu_init = 1e-8
-max_iters = 500
+max_iters = 300
 verbose = aligator.VerboseLevel.VERBOSE
 solver = aligator.SolverProxDDP(TOL, mu_init,max_iters, verbose=verbose)
 
@@ -324,16 +334,19 @@ print(res)
 forces = np.zeros((T_mpc,12))   # 12 linear forces on each leg
 
 for i in range(T_mpc):
-    if i not in range(T_fd + T_ds,T_fd + T_ds + T_ss):
+    if i <T_fd + T_ds or i >= T_fd + T_ds + T_ss:
         forces[i,:3] = solver.workspace.problem_data.stage_data[i].dynamics_data.continuous_data.constraint_datas[0].contact_force.linear
         forces[i,3:6] = solver.workspace.problem_data.stage_data[i].dynamics_data.continuous_data.constraint_datas[1].contact_force.linear
         forces[i,6:9] = solver.workspace.problem_data.stage_data[i].dynamics_data.continuous_data.constraint_datas[2].contact_force.linear
         forces[i,9:12] = solver.workspace.problem_data.stage_data[i].dynamics_data.continuous_data.constraint_datas[3].contact_force.linear
 
-with open("fd_traj.npy", "wb") as f:
-    np.save(f, np.array(res.xs))
-    np.save(f, np.array(res.us))
-    np.save(f, forces)
+# not reliable !
+# with open("fd_traj.npy", "wb") as f:
+#     np.save(f, np.array(res.xs))
+#     np.save(f, np.array(res.us))
+#     np.save(f, forces)
+
+np.savez("fd_trajs_from_ocp.npz", xs=np.array(res.xs), us=np.array(res.us), forces=forces)
 
 # plot_torques(np.array(res.us))
 

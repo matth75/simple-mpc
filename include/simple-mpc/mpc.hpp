@@ -194,6 +194,7 @@ namespace simple_mpc
     // Initial quantities
     VectorXd x0_;
     VectorXd u0_;
+    std::vector<std::map<std::string, Eigen::Vector3d>> forces_refs_;
   };
 
 } // namespace simple_mpc

@@ -94,6 +94,16 @@ namespace simple_mpc
     velocity_base_.setZero();
     next_pose_.setZero();
     twist_vect_.setZero();
+
+    for (size_t t=0; t<ocp_handler_->getSize(); t++)
+    {
+      std::map<std::string, Eigen::Vector3d> fref;
+      for (auto const & name : ee_names_)
+      {
+        fref[name] = Eigen::Vector3d::Zero();
+      }
+      forces_refs_.push_back(fref);
+    }
   }
 
   void MPC::generateCycleHorizon(const std::vector<std::map<std::string, bool>> & contact_states)
@@ -316,6 +326,26 @@ namespace simple_mpc
     com_ref[2] += com0_[2];
 
     ocp_handler_->updateTerminalConstraint(com_ref);
+
+    for (size_t t=0; t<ocp_handler_->getSize() - 1; t++)
+    { 
+      if (forces_refs_.size() != ocp_handler_->getSize())
+      {
+        std::cout << "wrong size" << std::endl;
+      }
+      auto contact_state = ocp_handler_->getContactState(t);
+      int i=0;
+      for (auto const & name: ee_names_)
+      {
+        if (contact_state[i])
+        {
+          ocp_handler_->setReferenceForce(t, name, forces_refs_[t].at(name));
+        }
+        i++; 
+        // ocp_handler_->setReferenceForce(t, name, vec);
+      }
+    }
+
   }
 
   void MPC::setReferencePose(const std::size_t t, const std::string & ee_name, const pinocchio::SE3 & pose_ref)

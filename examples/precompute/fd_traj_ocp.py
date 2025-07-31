@@ -203,7 +203,7 @@ frame_fn_RR = aligator.FramePlacementResidual(
 #############################
 
 T_ds = 50
-T_ss = 30
+T_ss = 50
 T_fd = 50   # horizon utilisé par le MPC, permet d'ajuster la durée de la 1ere phase de contact
 
 #############################
@@ -263,23 +263,23 @@ def createStage(contact, i):
     # add box constraints for forces
     # stm.addConstraint()
     # add constraint on com height before takeoff
-    ctrl_com = aligator.CentroidalCoMResidual(space.ndx, nu, np.array([0.0, 0.0, -0.04]) + com0)
-    ctrl_com = aligator.LinearFunctionComposition(ctrl_com, -np.eye(3))
-    if (i==T_ds + T_fd - 10)  or (i==T_ds + T_fd + T_ss + 5):
-        stm.addConstraint(ctrl_com, constraints.NegativeOrthant())
+    # ctrl_com = aligator.CentroidalCoMResidual(space.ndx, nu, np.array([0.0, 0.0, -0.04]) + com0)
+    # ctrl_com = aligator.LinearFunctionComposition(ctrl_com, -np.eye(3))
+    # if (i==T_ds + T_fd - 10)  or (i==T_ds + T_fd + T_ss + 5):
+    #     stm.addConstraint(ctrl_com, constraints.NegativeOrthant())
 
     ctrl_fn = aligator.ControlErrorResidual(space.ndx, np.zeros(nu))
     stm.addConstraint(ctrl_fn, constraints.BoxConstraint(umin, umax))
 
-    if contact == possible_contacts["stand"]:
-        ctrl_FL = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "FL_foot", 0.8)
-        ctrl_FR = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "FR_foot", 0.8)
-        ctrl_RL = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "RL_foot", 0.8)
-        ctrl_RR = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "RR_foot", 0.8)
-        stm.addConstraint(ctrl_FL, constraints.NegativeOrthant())
-        stm.addConstraint(ctrl_FR, constraints.NegativeOrthant())
-        stm.addConstraint(ctrl_RL, constraints.NegativeOrthant())
-        stm.addConstraint(ctrl_RR, constraints.NegativeOrthant())
+    # if contact == possible_contacts["stand"]:
+    #     ctrl_FL = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "FL_foot", 0.8)
+    #     ctrl_FR = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "FR_foot", 0.8)
+    #     ctrl_RL = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "RL_foot", 0.8)
+    #     ctrl_RR = aligator.MultibodyFrictionConeResidual(space.ndx, rmodel, S, constraint_models, proxSettings, "RR_foot", 0.8)
+    #     stm.addConstraint(ctrl_FL, constraints.NegativeOrthant())
+    #     stm.addConstraint(ctrl_FR, constraints.NegativeOrthant())
+    #     stm.addConstraint(ctrl_RL, constraints.NegativeOrthant())
+    #     stm.addConstraint(ctrl_RR, constraints.NegativeOrthant())
     # stm.addConstraint(,constraints.)
 
     # on landing, feet velocities = 0

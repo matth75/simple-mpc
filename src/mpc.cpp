@@ -99,7 +99,7 @@ namespace simple_mpc
     }
 
     // assumes force size = 3 !!
-  
+    // init forces references to zero
     for (size_t t=0; t<ocp_handler_->getSize(); t++)
     {
       std::map<std::string, Eigen::Vector3d> fref;
@@ -342,26 +342,7 @@ namespace simple_mpc
       ocp_handler_->setMomentumRef(t, mom_refs_[t]);
     }
 
-    // seems good
-    // for (size_t t=0; t<ocp_handler_->getSize() - 1; t++)
-    // { 
-    //   if (forces_refs_.size() != ocp_handler_->getSize())
-    //   {
-    //     std::cout << "wrong size" << std::endl;
-    //   }
-    //   auto contact_state = ocp_handler_->getContactState(t);
-    //   int i=0;
-    //   for (const auto & [name, vec]: forces_refs_[t])
-    //   {
-    //     if (contact_state[i])
-    //     {
-    //       ocp_handler_->setReferenceForce(t, name, vec);
-    //     }
-    //     i++; 
-    //     // ocp_handler_->setReferenceForce(t, name, vec);
-    //   }
-    // }
-
+    // for forces tracking :  default values are zeros but they can be updated online
     for (size_t t=0; t<ocp_handler_->getSize() - 1; t++)
     { 
       if (forces_refs_.size() != ocp_handler_->getSize())

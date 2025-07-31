@@ -1,3 +1,5 @@
+""" Contains some functions for computing foot trajectories and plotting utils. """
+
 import matplotlib.pyplot as plt
 import numpy as np
 import ndcurves
@@ -72,6 +74,7 @@ def plot_results(res:np.array, T_jump:int=0, T_land:int=0, show_plot:bool=True, 
 
 # poor function
 def global_comp_predictions(com_c:np.array, com_fd:np.array, comp_times, show_plot:bool=True, save_png:str=""):
+    """ Compares com evolution of centroidal and full dynamics models. """
     n = com_c.shape[0]
     fig, axs = plt.subplots(3,1,figsize=(10,15), sharex=True)
     colors1 = ['red', 'blue', 'orange']

@@ -1,10 +1,17 @@
+""" 
+Class instance of the Go2 Centroidal OCP problem. Can be used if needed.
+
+Written for testing the OCP problem alongside the full dynamics MPC.
+"""
+
+
+
 from simple_mpc import RobotModelHandler, RobotDataHandler
 from aligator import dynamics, manifolds, constraints
 import aligator
 import pinocchio as pin
 import numpy as np
 
-# TODO: create a class to handle OCP resolution
 
 class Go2CentroidalOCP:
     def __init__(self, model_handler:RobotModelHandler):

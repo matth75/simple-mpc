@@ -69,7 +69,8 @@ namespace simple_mpc
         .def("getVelocityBase", bp::pure_virtual(&OCPHandler::getVelocityBase), bp::args("self", "t"))
         .def("setPoseBase", bp::pure_virtual(&OCPHandler::setPoseBase), bp::args("self", "t", "pose_base"))
         .def("getPoseBase", bp::pure_virtual(&OCPHandler::getPoseBase), bp::args("self", "t"))
-        .def("setCoMref", bp::pure_virtual(&OCPHandler::setCoMref), bp::args("self", "t", "com_ref"))
+        // to change centroidal references
+        .def("setCoMref", bp::pure_virtual(&OCPHandler::setCoMref), bp::args("self", "t", "com_ref")) 
         .def("getCoMref", bp::pure_virtual(&OCPHandler::getCoMref), bp::args("self", "t"))
         .def("setMomentumRef", bp::pure_virtual(&OCPHandler::setMomentumRef), bp::args("self", "t", "mom_ref"))
         .def("getMomentumRef", bp::pure_virtual(&OCPHandler::getMomentumRef), bp::args("self", "t"))

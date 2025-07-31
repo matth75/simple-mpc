@@ -1,3 +1,7 @@
+""" 
+Plot and compare compute time of Double MPC scheme and Full Dynamics MPC scheme.
+ """
+
 import matplotlib.pyplot as plt
 import numpy as np
 

@@ -348,6 +348,7 @@ for t in range(n_steps):
             x_measured, x_interp
         )
 
+        # IF NO FRICTION THIS PART IS UNECESSARY
         # qp.solveQP(
         #     mpc.getDataHandler().getData(),
         #     contact_states,
@@ -394,25 +395,25 @@ torques = np.array(torques)
 
 # centroidal residual
 
-with open("examples/forces.npy", "wb") as f:
-    np.save(f, force_FL)
-    np.save(f, force_FR)
-    np.save(f, force_RL)
-    np.save(f, force_RR)
+# with open("examples/forces.npy", "wb") as f:
+#     np.save(f, force_FL)
+#     np.save(f, force_FR)  
+#     np.save(f, force_RL)
+#     np.save(f, force_RR)
 
-n_joints = 12
-n_legs = 4
+# n_joints = 12
+# n_legs = 4
 
-torques = np.array(torques)
-torques_limits = np.array(model_handler.getModel().effortLimit[6:])
+# torques = np.array(torques)
+# torques_limits = np.array(model_handler.getModel().effortLimit[6:])
 
-with open("examples/qptorques.npy", "wb") as f:
-    np.save(f, torques)
-    np.save(f, torques_limits)
+# with open("examples/qptorques.npy", "wb") as f:
+#     np.save(f, torques)
+#     np.save(f, torques_limits)
 
-time = np.arange(torques.shape[0])
-tau1 = np.array([t[0] for t in torques])
-tau2 = np.array([t[0] for t in torques_before_qp])
+# time = np.arange(torques.shape[0])
+# tau1 = np.array([t[0] for t in torques])
+# tau2 = np.array([t[0] for t in torques_before_qp])
 
 
 # plt.plot(time,tau2-tau1, label="abs(diff)")

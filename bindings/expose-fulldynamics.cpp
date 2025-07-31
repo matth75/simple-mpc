@@ -16,7 +16,7 @@ namespace simple_mpc::python
     conf.w_cent = bp::extract<Eigen::MatrixXd>(settings["w_cent"]);
     conf.w_forces = bp::extract<Eigen::MatrixXd>(settings["w_forces"]);
     conf.w_frame = bp::extract<Eigen::MatrixXd>(settings["w_frame"]);
-    conf.w_com = bp::extract<Eigen::MatrixXd>(settings["w_com"]);
+    conf.w_com = bp::extract<Eigen::MatrixXd>(settings["w_com"]); // for CoM tracking
 
     conf.gravity = bp::extract<Eigen::Vector3d>(settings["gravity"]);
     conf.force_size = bp::extract<int>(settings["force_size"]);

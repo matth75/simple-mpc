@@ -16,7 +16,6 @@ import aligator
 import example_robot_data as erd
 import pinocchio as pin
 import time
-from utils import extract_forces
 import copy
 
 from ocp_centroidal.go2_utils import (create_contact_phases,
@@ -26,7 +25,8 @@ from ocp_centroidal.go2_utils import (create_contact_phases,
                                         global_comp_predictions,
                                         plot_forces)
 
-from ocp_centroidal.go2centrOPC import Go2CentroidalOCP
+# class implementation of centroidal ocp. Used for testing
+# from ocp_centroidal.go2centrOPC import Go2CentroidalOCP 
 
 import matplotlib.pyplot as plt
 
@@ -425,6 +425,6 @@ if True:
             device.execute(current_torque)
 
 
-print(sum(solve_time)/len(solve_time))
+# print(sum(solve_time)/len(solve_time))
 
 

@@ -390,6 +390,7 @@ namespace simple_mpc
     cfr->setReference(com_reference);
   }
 
+  // setters and getters for Momentum references
   const Eigen::VectorXd FullDynamicsOCP::getMomentumRef(const std::size_t t)
   {
     CostStack * cs = getCostStack(t);

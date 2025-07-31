@@ -91,7 +91,7 @@ namespace simple_mpc
         .def_readwrite("velocity_base", &MPC::velocity_base_)
         .def_readwrite("x_reference", &MPC::x_reference_)
         .def_readonly("ocp_handler", &MPC::ocp_handler_)
-        .def_readwrite("setComReferences", &MPC::com_refs_)
+        .def_readwrite("setComReferences", &MPC::com_refs_) // To change Com, Mom References
         .def_readwrite("MomReferences", &MPC::mom_refs_)
         .def_readwrite("forcesReferences", &MPC::forces_refs_)
         .def("switchToWalk", &MPC::switchToWalk, ("self"_a, "velocity_base"))

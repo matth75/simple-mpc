@@ -1,4 +1,13 @@
-""" Script to generate centroidal ocp and execute mpc scheme"""
+""" 
+This script is used to compute a centroidal trajectory of a jump of the go2 robot.
+
+The robot state is its CoM (Center of Mass) position, linear momentum and angular momentum.
+The robot controls are 4 contact forces. 
+
+You can change the jump's characterics using T_ss and T_ds values, as well as the different contact phases.
+
+The go2_utils python file contains some functions to plot different values.
+"""
 
 import numpy as np
 import aligator
@@ -14,18 +23,11 @@ from aligator import (manifolds,
 
 import example_robot_data as erd
 
-import sys
-
-# -------- set to False to use zmin_plot script ------
-
-localuse = True
-
-# ---------------------------------------
+# ------------------------------------------------ #
+# ------------ ROBOT INITIALISATION -------------- #
+# ------------------------------------------------ #
 
 robot = erd.load("go2")
-
-URDF_FILENAME = "go2.urdf"
-URDF_SUBPATH = "/go2_description/urdf/go2.urdf"
 
 # create model and data intances
 rmodel = robot.model
@@ -46,6 +48,7 @@ torso_id = rmodel.getFrameId("base")
 
 model_handler = RobotModelHandler(rmodel, "standing", base_joint_name)
 
+# robot configuration of all joints while standing
 q0 = rmodel.referenceConfigurations["standing"]
 
 # torque limits on all joints of the robot
@@ -67,7 +70,7 @@ x0 = space.neutral()
 # print(x0)
 u0 = np.zeros(nu)   # warm start
 
-# update com position
+# update com position using the Full Dynamics model reference (q0)
 pin.forwardKinematics(rmodel, rdata, q0)
 pin.updateFramePlacements(rmodel, rdata)
 com0 = pin.centerOfMass(rmodel, rdata, q0)
@@ -75,11 +78,10 @@ x0[:3] = com0.copy()
 # x0[0] -= 0.02
 # go2.plot_com_3d(np.array(com0), show_plot=True)
 
-print(com0)
-
 # create OCP problem
 gravity = np.array([0, 0, -9.81])
-mu = 0.8                 # friction coefficient : use it ?
+mu = 0.8                 # coefficient de friction pour cône de contact pour les forces 3D.
+                         # Pas utilisé ici
 
 # compute reference (starting ?) forces
 mass = pin.computeTotalMass(rmodel)
@@ -97,6 +99,11 @@ controlled_joints = ['root_joint', 'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_jo
 
 controlled_ids = [rmodel.getJointId(j) for j in controlled_joints[1:]]    # cant control root joint
 
+
+# ----------------------------------------------------------------------- #
+# ----------- SIMULATION INIT / CONTACT PHASES PLANNING ----------------- #
+# ----------------------------------------------------------------------- #
+
 simu_step = 1e-3
 dt = 0.01   # 10 ms = temps de calcul d'ocp
 Nsimu = int(dt/simu_step)   # nombre de simulation entre deux résolutions d'ocp
@@ -111,17 +118,15 @@ possible_contacts = {"stand":[True, True, True, True],
                     }
 
 # contact phases and corresponding timings
-if localuse:
-    T_ss = 47   # for testing purposes
-else:
-    T_ss = int(sys.argv[1])
-T_ds = 50
+T_ds = 50   
+T_ss = 47
 
 # c_phases = ["stand", "FL_up", "air", "RL_up", "stand"]
 c_phases = ["stand", "air", "stand"]
 
 # timings = [30, 10, 30, 2, 30]
 timings = [T_ds, T_ss, 20]
+
 cycles = 1  # number of repetitions of the sequence
 
 # get the contacts
@@ -132,6 +137,8 @@ T_mpc = len(contact_phases)    # nombre de résolutions d'ocp  ~ temps de la sim
 f0 = -mass*gravity[2] / nk  # force applied on one leg when all legs are touching the ground
 f2 = f0 * 2   # force applied when 2 legs are touching the ground
 
+
+# THIS PART COMPUTES SOME WARM START VALUES FOR CONTROL FORCES, NOT NECESSARY 
 # standard forces (3D) applied to all 4 legs 
 possible_u = {"stand":np.array([0,0,f0] * nk),
             "FL_up":np.array([0, 0, f2] *2 + [0, 0, 0]*2),
@@ -140,7 +147,9 @@ possible_u = {"stand":np.array([0,0,f0] * nk),
             }
 
 u0 = np.array([0,0,f0, 0,0, f0, 0,0,f0, 0,0,f0])
-# pas nécessaire
+
+# pas nécessaire, on peut aussi utiliser uref = np.zeros((12, len(contact_phases))) plus simplement sans 
+# pertes significatives de performances. Uref ne sert qu'au warm start du solveur
 uref =[]
 for c in contact_phases:
     if c == [True, True, True, True]:
@@ -149,7 +158,9 @@ for c in contact_phases:
         uref.append(np.zeros(12))
 
 
-""" Cost weights and stage creation """
+# ------------------------------------------------------------------------ #
+# --- COSTS FUNCTIONS DESIGN (WHEIGHTS, SIMULATION STAGES, CONSTRAINTS)--- #
+# ------------------------------------------------------------------------ #
 
 # weights associated to the runnings costs
 w_control = np.array([   # 3D forces *4 legs = 12 = nu
@@ -161,6 +172,7 @@ w_control = np.array([   # 3D forces *4 legs = 12 = nu
 w_control = np.diag(w_control) * 0.01
 w_com = np.diag([0,0,10000])    # no constraint on com right now
 
+# forces minimales et maximales admissibles par le go2
 umin = np.array([0,0,0] * 4)
 umax = np.array([0,0,250]* 4)
 
@@ -207,17 +219,14 @@ def createStage(contact, i, feet_pose, ur):
     # create the stage model associated to the running cost and dynamics
     stm = aligator.StageModel(rcost, create_dynamics(contact_map))
 
+    # force CoM z component to be under a specific value before jump
     com_cstr = aligator.CentroidalCoMResidual(nx, nu, com0 + np.array([0,0,0.02]))
     if i == T_ds or i == T_ds + T_ss:
         stm.addConstraint(com_cstr, constraints.NegativeOrthant())
 
+    # add max and min value to the possible forces values
     forces_cstr = aligator.ControlErrorResidual(space.ndx, nu)
-    # forces_cstr = aligator.LinearFunctionComposition(forces_cstr, np.diag(np.array([0,0,-1] * 4)) )
     stm.addConstraint(forces_cstr, constraints.BoxConstraint(umin, umax))
-
-    # # no specific constraints (contact constraints already included in contact_map)
-    # if contact == [True, True, True, True] and contact1 == [False, False, False, False]:
-    #     stm.addConstraint(centroidal_com, constraints.NegativeOrthant())
 
     return stm
 
@@ -232,21 +241,25 @@ stages = []
 for i in range(T_mpc):
     stages.append(createStage(contact_phases[i], i, feet_pose, uref[i]))
 
-# add an empty terminal cost
+# add an empty TERMINAL COST
 term_cost = aligator.CostStack(space, nu)
 
-# create an OCP instance
+# TIME OF THE SIMULATION
 T_mpc = len(stages)
-# x0[5] = 5
-# x0[2] = 0.25
+
+
+# ----------------------------------------------------------------------- #
+# -----------PROBLEM INSTANCE AND TERMINAL STAGE TUNING------------------ #
+# ----------------------------------------------------------------------- #
+
+
 problem = aligator.TrajOptProblem(x0, stages, term_cost)
 
 """ Add some terminal constraints to guarantee the stability of the robot at the end of the horizon"""
 
 """
-Turns out that this part is useless
+Turns out linear and angular momentum = 0 if contact at the end of the horizon is not that useful
 """
-# # Really important test !!! Otherwise trajectories are absurd to satisfy lin_mom[-1] = ang_mom[-1] = 0
 # if contact_phases[-1] == [True, True, True, True]:
 #     # vitesse et moment angulaire = 0 au bout de l'horizon
 #     linear_mom = aligator.LinearMomentumResidual(nx, nu, np.zeros(3))
@@ -260,18 +273,23 @@ Turns out that this part is useless
 # position en z du com = z du com de référence
 com_pos = aligator.CentroidalCoMResidual(space.ndx, nu, com0)
 com_pos = aligator.LinearFunctionComposition(com_pos, np.diag(np.array([0,0,1]))) # just z component
-term_stage_cstr = aligator.StageConstraint(com_pos, constraints.EqualityConstraintSet())
-problem.addTerminalConstraint(term_stage_cstr)
 
-""" Parametrize the solver"""
+# next line is deprecated
+# term_stage_cstr = aligator.StageConstraint(com_pos, constraints.EqualityConstraintSet())
+
+problem.addTerminalConstraint(com_pos, constraints.EqualityConstraintSet())
+
+
+# ----------------------------------------------------------------------- #
+# --------------------- PARAMETRIZE THE SOLVER -------------------------- #
+# ----------------------------------------------------------------------- #
 
 TOL = 1e-5
 mu_init = 1e-8 
 
 max_iters = 50  # easy move, should not take too many iterations
 verbose = aligator.VerboseLevel.VERBOSE
-solver = aligator.SolverProxDDP(TOL, mu_init)
-#solver = aligator.SolverFDDP(TOL, verbose=verbose)
+solver = aligator.SolverProxDDP(TOL, mu_init, verbose=verbose)
 solver.rollout_type = aligator.ROLLOUT_LINEAR
 #print("LDLT algo choice:", solver.ldlt_algo_choice)
 solver.linear_solver_choice = aligator.LQ_SOLVER_PARALLEL #LQ_SOLVER_SERIAL
@@ -286,6 +304,11 @@ solver.setup(problem)
 us_init = [u0 for _ in range(T_mpc)]
 xs_init = [x0] * (T_mpc + 1)
 
+
+# ----------------------------------------------------------------------- #
+# --------------------- RUN OCP AND GET RESULTS ------------------------- #
+# ----------------------------------------------------------------------- #
+
 solver.run(
     problem,
     xs_init,
@@ -294,23 +317,14 @@ solver.run(
 
 res = solver.results
 
-xs = np.array(res.xs)
-us = np.array(res.us)
+print(res)
+
+xs = np.array(res.xs)   # state results
+us = np.array(res.us)   # control results
 
 # with open("examples/nparrays/optCentrTraj.npy", 'wbx') as f:
 #     np.save(f, xs)
 #     np.save(f, us)
 
-if localuse:
-    print(res)
-    print(us[20])
 
-    print(us[T_ds - 1])
-    go2.plot_results(xs, T_ds, T_ds + T_ss)
-    go2.plot_forces(np.array(res.us), 10, T_ds - 1)
-
-    
-# go2.plot_results(xs)
-
-
-print(np.min(xs[:,2]))
+go2.plot_results(xs)

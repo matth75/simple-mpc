@@ -1,4 +1,18 @@
-import aligator.constraints
+""" 
+This script uses a double MPC scheme. The centroidal MPC provides a first trajectory through
+fast computation due to the simplicity of the model. The results are then provided 
+(centroidal state & contact forces) as a reference to the Full Dynamics MPC scheme.
+
+This improves slightly the performance of the overall MPC compared to a Full Dynamics MPC alone,
+while adding little computational time. See ocp_centroidal/benchmark.py for comparison.
+
+Running and terminal costs are written in the cpp files centroidal-dynamcis.cpp and full-dynamics.cpp
+The running and terminal costs of the centroidal MPC were designed using the ocp_centroidal/go2_centroidal.py file
+
+Weights and contact sequence are defined in this python script.
+
+WARNING : SCRIPT WORKS FOR ANY T_fd below 50 AND T_ctr = 100. See below (line 300 approx.) for further explanations.
+"""
 import numpy as np
 from bullet_robot import BulletRobot
 from simple_mpc import (
@@ -12,11 +26,9 @@ from simple_mpc import (
     FrictionCompensation
 )
 
-import aligator
 import example_robot_data as erd
 import pinocchio as pin
 import time
-import copy
 
 from ocp_centroidal.go2_utils import (create_contact_phases,
                                         plot_results,
@@ -28,7 +40,7 @@ from ocp_centroidal.go2_utils import (create_contact_phases,
 # class implementation of centroidal ocp. Used for testing
 # from ocp_centroidal.go2centrOPC import Go2CentroidalOCP 
 
-import matplotlib.pyplot as plt
+
 
 # ####### CONFIGURATION  ############
 # Load robot
@@ -57,21 +69,6 @@ gravity = np.array([0, 0, -9.81])
 fref = np.zeros(force_size)
 fref[2] = -model_handler.getMass() / nk * gravity[2]
 u0 = np.zeros(model_handler.getModel().nv - 6)
-
-# full dynamics rcost weights
-w_basepos = [0, 0, 0, 0, 0, 0]
-w_legpos = [10, 10, 10]
-
-w_basevel = [10, 10, 10, 10, 10, 10]
-w_legvel = [0.1, 0.1, 0.1]
-w_x = np.array(w_basepos + w_legpos * 4 + w_basevel + w_legvel * 4)
-w_cent_lin = np.array([0.001, 0.001, 1])
-w_cent_ang = np.array([0.0001, 0.0001, 0.001])
-w_forces_lin = np.array([0.001, 0.001, 0.001])
-w_frame = np.diag([1,1,0.01])*1e3
-w_com_fd = np.diag(np.array([0.01, 0.01, 1]))
-
-dt = 0.01   # simulation timestep
 
 """ Define contact sequence throughout horizon"""
 contact_phase_quadru = {
@@ -111,12 +108,34 @@ possible_contacts = {"stand":contact_phase_quadru,
                      "air":contact_phase_lift # jumping
                     }
 
-""" Initialise the two OCP problems """
+
+# ----------------------------------------------------------------------- #
+# ------------------- OCP PROBLEMS INITIALISATION ----------------------- #
+# ----------------------------------------------------------------------- #
+
+dt = 0.01   # simulation timestep
+
+# Full Dynamics wheights of running costs, boundary constraints on torque...
+
+# full dynamics rcost weights
+w_basepos = [0, 0, 0, 0, 0, 0]
+w_legpos = [10, 10, 10]
+
+w_basevel = [10, 10, 10, 10, 10, 10]
+w_legvel = [0.1, 0.1, 0.1]
+w_x = np.array(w_basepos + w_legpos * 4 + w_basevel + w_legvel * 4)     # state cost wheights
+w_frame = np.diag([1,1,0.01])*1e3                                       # avoids leg shaking (a little)
+
+# These costs are there to force tracking of CoM trajectory provided by the centroidal model
+w_cent_lin = np.array([0.001, 0.001, 1])                # linear momentum tracking
+w_cent_ang = np.array([0.0001, 0.0001, 0.001])          # angular momentum tracking
+w_forces_lin = np.array([0.001, 0.001, 0.001])          # contact forces tracking
+w_com_fd = np.diag(np.array([0.01, 0.01, 1]))           # CoM tracking
 
 problem_conf_fd = dict(
     timestep=dt,
-    w_x=np.diag(w_x),
-    w_u=np.eye(u0.size) * 1e-4,
+    w_x=np.diag(w_x),               
+    w_u=np.eye(u0.size) * 1e-4,     # control cost wheights
     w_cent=np.diag(np.concatenate((w_cent_lin, w_cent_ang))),
     gravity=gravity,
     force_size=3,
@@ -138,14 +157,18 @@ problem_conf_fd = dict(
     land_cstr=True
 )
 
-# length of the horizon (in simulation steps) for FD OCP
-T_fd = 25
+# ---------------- CHOOSE HERE THE FULL DYNAMICS HORIZON LENGTH ------------------ #
 
-T_ds = 50
-T_ss = 30
+T_fd = 50       # length of the horizon (in simulation steps) for FD OCP
 
+# -------------------------------------------------------------------------------- #
+
+# creating the fd_problem
 fd_problem = FullDynamicsOCP(problem_conf_fd, model_handler)
 fd_problem.createProblem(model_handler.getReferenceState(), T_fd, force_size, gravity[2], False)
+
+
+# Centroidal MPC wheights of running costs
 
 w_control = np.array([   # 3D forces *4 legs = 12 = nu
     1,1,1,
@@ -153,12 +176,12 @@ w_control = np.array([   # 3D forces *4 legs = 12 = nu
     1,1,1,
     1,1,1
 ])
-w_control = np.diag(w_control) * 0.01
-w_com_centr = np.diag([0.1,0,1])    # no constraint on com right now
-w_lin = np.diag(np.array([0.01, 0.01, 1]))  
-w_ang = np.diag(np.array([0.01, 0.01, 1]))
-w_linear_acc = 0.01 * np.eye(3)
-w_angular_acc = np.diag(np.array([0.01, 1, 0.01]))
+w_control = np.diag(w_control) * 0.01               # control cost (4 contact forces)
+w_com_centr = np.diag([0.1,0,1])                    # forcing CoM to be near reference position (when robot is standing)
+w_lin = np.diag(np.array([0.01, 0.01, 1]))          # linear momentum 
+w_ang = np.diag(np.array([0.01, 0.01, 1]))          # angular momentum
+w_linear_acc = 0.01 * np.eye(3)                     # linear momentum acceleration
+w_angular_acc = np.diag(np.array([0.01, 1, 0.01]))  # angular momentum acceleration
 
 
 problem_conf_ctr = dict(
@@ -174,16 +197,25 @@ problem_conf_ctr = dict(
     Lfoot=0.01,
     Wfoot=0.01,
     force_size=force_size,
-)
+)   
 
-# horizon length for centroidal dynamics OCP
-T_ctr = 100
+
+# ---------------- CHOOSE HERE THE CENTROIDAL HORIZON LENGTH --------------------- #
+
+T_ctr = 100         # horizon length for centroidal dynamics OCP
+
+# -------------------------------------------------------------------------------- #
+
+# centroidal problem instance creation
 ctr_problem = CentroidalOCP(problem_conf_ctr, model_handler)
 ctr_problem.createProblem(data_handler.getCentroidalState(), T_ctr, force_size, gravity[2], True)
 
-# # useless ??
-# T_ds = 20
-# T_ss = 80
+# ----------- CHOOSE HERE THE TIME OF CONTACT SEQUENCES ----------------- #
+
+T_ds = 50
+T_ss = 40
+
+# -------------------- CONFIGURATION OF THE MPCs------------------------- #
 
 mpc_conf = dict(
     support_force=-model_handler.getMass() * gravity[2],
@@ -201,7 +233,7 @@ mpc_conf_ctr = dict(
     support_force=-model_handler.getMass() * gravity[2],
     TOL=1e-5,
     mu_init=1e-8,
-    max_iters=2,    # interesting
+    max_iters=2,        # we can allow for more than 1 iteration of the centroidal solver because it is very fast
     num_threads=1,
     swing_apex=0.4,
     T_fly=T_ss,
@@ -209,9 +241,12 @@ mpc_conf_ctr = dict(
     timestep=problem_conf_ctr["timestep"],
 )
 
+# Mpc instances
 mpc_centr = MPC(mpc_conf_ctr, ctr_problem)
 mpc_fd = MPC(mpc_conf, fd_problem)
 
+
+# --------------- CONTACT PHASES PLANNING ----------------- #
 
 # choose the phases of the motion
 c_phases = ["stand", "air",  "stand"]
@@ -219,16 +254,17 @@ c_phases = ["stand", "air",  "stand"]
 timings = [T_fd, T_ss, 50]
 cycles = 1  # number of repetitions of the sequence
 
-# get the contacts
+# get the contact phases
 contact_phases = [possible_contacts[c] for c in create_contact_phases(c_phases, timings, cycles)]
-# contact_phasesOCP = [list(possible_contacts[c].values()) for c in create_contact_phases(c_phases, timings, cycles)]
-
 
 
 mpc_centr.generateCycleHorizon(contact_phases)
 mpc_fd.generateCycleHorizon(contact_phases)
 
-""" Initialize simulation"""
+# --------------------------------------------------------------- #
+# ---- INITIALIZE SIMULATION USING BULLET PHYSICS SIMULATOR ----- #
+# --------------------------------------------------------------- #
+
 device = BulletRobot(
     model_handler.getModel().names,
     erd.getModelPath(URDF_SUBPATH),
@@ -261,15 +297,25 @@ for pose in ref_foot_pose:
     pose.translation[2] = 0
 device.showQuadrupedFeet(*ref_foot_pose)
 
-# burn through the first static states. 
-# These states are there to guarantee that the cycling horizon is bigger than the main horizon (T_ctr)
-# This is done by creating T_ctr states at the beginning that are standing states.
 
-for t in range(T_fd + (50 - T_fd)*2):   # alignement du mpc_centr et mpc_fd
+# IMPORTANT /!\ 
+
+""" 
+The way the MPC is built, regardless of whether it is a Centroidal or a Full Dynamics model, 
+if the horizon lenght = T, the first T contact phases will be a copy of the first state (i.e. standing state here)
+
+This means that the Centroidal MPC of horizon length T_ctr = 100 will have 100 standing states at the beginning of its cycling horizon, 
+but the Full Dynamics MPC will have only T_fd = 50 standing states.
+
+To have both MPCs synchronized, we burn through the first states of mpc_centr.
+
+The formula below is quite empirical, works for any T_fd below 50 and T_ctr = 100. Adjust it if needed
+"""
+
+# aligning Centroidal and FD MPCs
+for t in range(T_fd + (50 - T_fd)*2):   
     mpc_centr.iterate(x_measured)
 
-# real simulation begins here
-# /!\ T_ctr > T_fd => different loop to burn through the first states of full dynamics needed /!\
 
 res_c = np.array(mpc_centr.xs)
 
@@ -281,10 +327,6 @@ for s in range(T_fd):
 
 res_fd = np.array(res_fd)
 
-# plot_results(res)
-# compare_predictions(res_c, res_fd)
-# plot_results(res_c)
-# plot_forces(np.array(mpc_centr.us))
 
 ee_names = ["FL_foot", "FR_foot", "RL_foot", "RR_foot"]
 f_refs = []
@@ -296,12 +338,18 @@ force_FR = []
 force_RL = []
 force_RR = []
 
+# Modify translation and rotation speed of robot
 # v = np.zeros(6)
 # v[0] = 0.3
 # v[4] = 0.2
 # mpc_centr.velocity_base = v
 # mpc_fd.velocity_base = v
 
+
+# --------------------------------------------------------------- #
+# ------------- START DOUBLE MPC SIMULATION LOOP ---------------- #
+# ------ USE comp_times TO STOP AND PLOT MPCs PREDICTION  ------- #
+# --------------------------------------------------------------- #
 
 comp_times = [] #45, 75, 85, 95 
 
@@ -377,12 +425,9 @@ if True:
         uss = [mpc_fd.us[0], mpc_fd.us[1]]
 
 
-        if t in comp_times: # beginning of the jump : first [False, False, False ,False]
-            contact_states = mpc_fd.ocp_handler.getContactState(0)
-            # x = mpc_fd.xs[0]
+        if t in comp_times: 
             print(mpc_centr.solver.results)
-            # data_handler.updateInternalData(x, False)
-            # x_centr = data_handler.getCentroidalState()
+            # results of mpc_centr prediction are in mpc_centr.xs and mpc_centr.us
 
             traj_fd = []
             forces_fd = []
@@ -394,7 +439,7 @@ if True:
 
             traj_fd = np.array(traj_fd)
 
-            compare_predictions(np.array(mpc_centr.xs), traj_fd)
+            compare_predictions(np.array(mpc_centr.xs), traj_fd)   
             compare_forces(np.array(mpc_centr.us), np.array(forces_fd))
             # plot_forces(np.array(mpc_centr.us))
             # plot_forces(np.array(forces_fd))
@@ -421,10 +466,11 @@ if True:
                 x_measured, x_interp
             )
 
-            # No QP solve
+            # No QP solve, no friction considered
             device.execute(current_torque)
 
 
+# mean solve time of the MPC 
 # print(sum(solve_time)/len(solve_time))
 
 

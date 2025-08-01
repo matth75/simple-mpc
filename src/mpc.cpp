@@ -95,6 +95,7 @@ namespace simple_mpc
     next_pose_.setZero();
     twist_vect_.setZero();
 
+    // Creating forces references, assuming 3D contact forces. Default values = 0
     for (size_t t=0; t<ocp_handler_->getSize(); t++)
     {
       std::map<std::string, Eigen::Vector3d> fref;
@@ -326,7 +327,8 @@ namespace simple_mpc
     com_ref[2] += com0_[2];
 
     ocp_handler_->updateTerminalConstraint(com_ref);
-
+    
+    // updating all forces references every mpc.iterate call using forces_refs_ values
     for (size_t t=0; t<ocp_handler_->getSize() - 1; t++)
     { 
       if (forces_refs_.size() != ocp_handler_->getSize())

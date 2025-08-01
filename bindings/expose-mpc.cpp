@@ -71,7 +71,8 @@ namespace simple_mpc
 
       StdVectorPythonVisitor<StageVec, true>::expose(
         "StdVec_StageModel", eigenpy::details::overload_base_get_item_for_std_vector<StageVec>());
-
+      
+      // allows setting new 3D forces references for contact forces from python 
       StdVectorPythonVisitor<std::vector<MapBool>, true>::expose("StdVec_MapBool");
 
       StdMapPythonVisitor<std::string, Eigen::Vector3d, std::less<std::string>, std::allocator<std::pair<const std::string, Eigen::Vector3d>>, true>::expose("StdMapVec3d");
@@ -89,7 +90,7 @@ namespace simple_mpc
         .def("setTerminalReferencePose", &MPC::setTerminalReferencePose, bp::args("self", "ee_name", "pose_ref"))
         .def_readwrite("velocity_base", &MPC::velocity_base_)
         .def_readwrite("x_reference", &MPC::x_reference_)
-        .def_readwrite("forcesReferences", &MPC::forces_refs_)
+        .def_readwrite("forcesReferences", &MPC::forces_refs_) // allows setting new forces references 
         .def_readonly("ocp_handler", &MPC::ocp_handler_)
         .def("switchToWalk", &MPC::switchToWalk, ("self"_a, "velocity_base"))
         .def("switchToStand", &MPC::switchToStand, "self"_a)

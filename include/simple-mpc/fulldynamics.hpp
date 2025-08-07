@@ -115,6 +115,9 @@ namespace simple_mpc
     FullDynamicsSettings settings_;
     ProximalSettings prox_settings_;
 
+    // after landing set equality constraints
+    bool has_landed_ = false;
+
     // Actuation matrix
     Eigen::MatrixXd actuation_matrix_;
 

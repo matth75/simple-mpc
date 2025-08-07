@@ -11,12 +11,14 @@
 #include <aligator/modelling/multibody/frame-velocity.hpp>
 #include <aligator/modelling/multibody/multibody-friction-cone.hpp>
 #include <aligator/modelling/multibody/multibody-wrench-cone.hpp>
+#include <aligator/modelling/centroidal/centroidal-translation.hxx>
 
 namespace simple_mpc
 {
   using namespace aligator;
   using ContactForceResidual = ContactForceResidualTpl<double>;
   using CentroidalMomentumResidual = CentroidalMomentumResidualTpl<double>;
+  using CentroidalCoMResidual = CentroidalCoMResidualTpl<double>;
   using MultibodyPhaseSpace = MultibodyPhaseSpace<double>;
   using MultibodyWrenchConeResidual = MultibodyWrenchConeResidualTpl<double>;
   using MultibodyFrictionConeResidual = MultibodyFrictionConeResidualTpl<double>;
@@ -157,6 +159,22 @@ namespace simple_mpc
       stm.addConstraint(state_slice, BoxConstraint(settings_.qmin, settings_.qmax));
     }
 
+    // for the precompute part, set equality constraints after landing
+    if ((settings_.w_frame(0,0) == 0) && has_landed_)
+    {
+      for (auto const & name : model_handler_.getFeetNames())
+      {
+        std::vector<int> frame_id = {2};
+
+        FrameTranslationResidual frame_residual = FrameTranslationResidual(
+            space.ndx(), nu_, model_handler_.getModel(), contact_pose.at(name).translation(),
+            model_handler_.getFootId(name));
+
+        FunctionSliceXpr frame_slice = FunctionSliceXpr(frame_residual, frame_id);
+        stm.addConstraint(frame_slice, EqualityConstraint());
+      }
+    }
+
     for (auto const & name : model_handler_.getFeetNames())
     {
       if (settings_.force_size == 6 and contact_phase.at(name))
@@ -187,6 +205,7 @@ namespace simple_mpc
         }
         if (settings_.land_cstr and land_constraint.at(name))
         {
+          has_landed_ = true;
           std::vector<int> vel_id = {0, 1, 2};
           FrameVelocityResidual velocity_residual = FrameVelocityResidual(
             space.ndx(), nu_, model_handler_.getModel(), Motion::Zero(), model_handler_.getFootId(name),
@@ -433,10 +452,15 @@ namespace simple_mpc
       throw std::runtime_error("Create problem first!");
     }
 
-    double tau = sqrt(com_ref[2] / 9.81);
-    DCMPositionResidual dcm_cstr = DCMPositionResidual(ndx_, nu_, model_handler_.getModel(), com_ref, tau);
+    // double tau = sqrt(com_ref[2] / 9.81);
+    // DCMPositionResidual dcm_cstr = DCMPositionResidual(ndx_, nu_, model_handler_.getModel(), com_ref, tau);
 
-    problem_->addTerminalConstraint(dcm_cstr, EqualityConstraint());
+    // problem_->addTerminalConstraint(dcm_cstr, EqualityConstraint());
+
+    CentroidalCoMResidual com_cstr = CentroidalCoMResidual(ndx_, nu_, com_ref);
+    std::vector<int> slicer = {2};
+    FunctionSliceXpr com_slice = FunctionSliceXpr(com_cstr, slicer);
+    problem_->addTerminalConstraint(com_slice, EqualityConstraint());
 
     terminal_constraint_ = true;
   }
